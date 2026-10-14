@@ -6,6 +6,11 @@
   <title>Mi Perfil — GAUD</title>
   <link rel="icon" href="icon/icon-web.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css">
+  <script src="js/validaciones.js" defer></script>
+  <script src="js/header.js" defer></script>
+  <script src="js/logo.js" defer></script>
+  <script src="js/perfil-foto.js" defer></script>
+  <script src="js/perfil.js" defer></script>
 </head>
 <body>
   <div class="app-layout">
@@ -13,9 +18,9 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="logo-img">
+        <a href="dashboard-tommisan.html" class="logo-img" id="logo-dashboard">
           <img src="icon/icon-web.png" alt="GAUD">
-        </div>
+        </a>
         <h2>GAUD</h2>
         <p>Gestión Académica</p>
       </div>
@@ -37,12 +42,16 @@
 
       <div class="sidebar-footer">
         <div class="user-mini">
-          <div class="user-avatar">
+          <div class="user-avatar" id="ava">
             <img src="icon/user.png" alt="">
           </div>
           <div class="user-info">
             <div class="user-name">Luis M. Peña</div>
             <div class="user-role">Estudiante</div>
+          </div>
+          <div class="dropdown" id="menu">
+            <a href="index.html">agregar otra cuenta</a>
+            <a href="#">salir</a>
           </div>
         </div>
       </div>
@@ -65,12 +74,25 @@
 
           <!-- Profile Header Card -->
           <div class="profile-header-card">
-            <div class="profile-avatar">
-              <img src="icon/user.png" alt="Foto de perfil">
-              <button class="avatar-edit">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              </button>
-            </div>
+          <div class="profile-avatar">
+    <img id="fotoPerfil" src="icon/user.png" alt="Foto de perfil">
+
+    <input
+        type="file"
+        id="inputFotoPerfil"
+        accept="image/*"
+        hidden
+    >
+
+    <button type="button" class="avatar-edit" id="btnCambiarFoto" title="Cambiar foto">
+        <svg width="16" height="16" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+    </button>
+</div>
             <div class="profile-header-info">
               <h2>Luis Manuel Peña</h2>
               <p>Estudiante · Ingeniería en Software</p>
@@ -88,6 +110,7 @@
             <div class="card">
               <div class="card-header">
                 <h3>Datos Personales</h3>
+                <button id="btnEditarPerfil" class="btn btn-outline" style="padding:0.35rem 0.9rem; font-size:0.8rem;">Editar perfil</button>
               </div>
               <div class="card-body">
                 <div class="info-row">
@@ -96,11 +119,11 @@
                 </div>
                 <div class="info-row">
                   <span class="info-label">Correo electrónico</span>
-                  <span class="info-value">20210458@p.uapa.edu.do</span>
+                  <span class="info-value" data-editable="email" data-campo="correo-perfil">20210458@p.uapa.edu.do</span>
                 </div>
                 <div class="info-row">
                   <span class="info-label">Teléfono</span>
-                  <span class="info-value">+1 (809) 555-0142</span>
+                  <span class="info-value" data-editable="tel" data-campo="telefono-perfil">+1 (809) 555-0142</span>
                 </div>
                 <div class="info-row">
                   <span class="info-label">Fecha de nacimiento</span>
@@ -112,7 +135,7 @@
                 </div>
                 <div class="info-row">
                   <span class="info-label">Dirección</span>
-                  <span class="info-value">Santo Domingo, DN</span>
+                  <span class="info-value" data-editable="texto" data-campo="direccion-perfil">Santo Domingo, DN</span>
                 </div>
               </div>
             </div>
