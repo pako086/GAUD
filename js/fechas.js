@@ -48,9 +48,26 @@ const GAUD_Fechas = (function () {
     return mesIni === mesFin ? `${mesIni} ${anio}` : `${mesIni} - ${mesFin} ${anio}`;
   }
 
+  function rangoTrimestreActual(ref = new Date()) {
+    const anio = ref.getFullYear();
+    const mes = ref.getMonth();
+    const numero = Math.floor(mes / 3) + 1;
+    const mesIni = (numero - 1) * 3;
+    const mesFin = mesIni + 2;
+    const inicioIso = `${anio}-${String(mesIni + 1).padStart(2, "0")}-01`;
+    const ultimoDia = new Date(anio, mesFin + 1, 0).getDate();
+    const finIso = `${anio}-${String(mesFin + 1).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`;
+    return {
+      numero,
+      inicio: inicioIso,
+      fin: finIso,
+      rango: rangoPeriodo(inicioIso, finIso)
+    };
+  }
+
   function esHoy(iso, refIso = hoy()) {
     return diasHasta(iso, refIso) === 0;
   }
 
-  return { hoy, formatearLarga, formatearCorta, diasHasta, relativa, rangoPeriodo, esHoy };
+  return { hoy, formatearLarga, formatearCorta, diasHasta, relativa, rangoPeriodo, rangoTrimestreActual, esHoy };
 })();

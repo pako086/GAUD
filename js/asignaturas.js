@@ -1,9 +1,17 @@
 const GAUD_Asignaturas = (function () {
-  const CLAVE_LS = "gaud_asignaturas";
+  const API = typeof window !== "undefined" ? window.GAUD_API : null;
   const ESTADOS_VALIDOS = ["aprobada", "en-curso", "pendiente"];
+  const ORDEN_MENU = ["pendiente", "en-curso", "aprobada"];
+  const ETIQUETA_ESTADOS = { pendiente: "Pendiente", "en-curso": "En curso", aprobada: "Aprobada" };
+  const LETRAS_CALIF = ["A", "B", "C"];
+  const RANGOS_CALIF = { A: "A · 90-100", B: "B · 80-89", C: "C · 70-79" };
 
-  let guardado = {};
+  const guardando = new Set();
+  const pidiendo = new Set();
   const overridesColapso = new Map();
+  let gridEnlazado = false;
+  let herramientasEnlazadas = false;
+  let usuarioCargado = null;
 
   function normalizar(texto) {
     return String(texto || "")
@@ -13,29 +21,50 @@ const GAUD_Asignaturas = (function () {
       .replace(/[\u0300-\u036f]/g, "");
   }
 
-  function cargarGuardado(pensum) {
-    if (typeof localStorage === "undefined") return;
-    try {
-      guardado = JSON.parse(localStorage.getItem(CLAVE_LS) || "{}");
-    } catch (e) {
-      guardado = {};
-    }
-    if (!Array.isArray(pensum)) return;
-    pensum.forEach(function (a) {
-      const g = guardado[a.codigo];
-      if (!g) return;
-      if (ESTADOS_VALIDOS.includes(g.estado)) a.estado = g.estado;
-      a.calificacion = typeof g.calificacion === "number" ? g.calificacion : null;
-    });
+  function obtenerPensum() {
+    return typeof GAUD_DATA !== "undefined" && Array.isArray(GAUD_DATA.pensum) ? GAUD_DATA.pensum : [];
   }
 
-  function guardarCambios(a) {
-    if (typeof localStorage === "undefined") return;
-    guardado[a.codigo] = { estado: a.estado, calificacion: a.calificacion };
+  function buscarPorId(id) {
+    return obtenerPensum().find(function (a) { return String(a.id) === String(id); });
+  }
+
+  function revertir(a, anterior) {
+    a.estado = anterior.estado;
+    a.calificacion = anterior.calificacion;
+    if (typeof document !== "undefined") {
+      const fila = document.querySelector(`.pensum-grid .course[data-id="${a.id}"]`);
+      if (fila) {
+        actualizarFila(fila, a);
+        const termEl = fila.closest(".term");
+        if (termEl)
+          sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.trimestre)));
+      }
+    }
+    renderCurrent(obtenerPensum().filter(function (x) { return x.estado === "en-curso"; }));
+    aplicar();
+  }
+
+  async function guardarCambios(a, anterior) {
+    if (!API || !a.id) return;
+    const clave = String(a.id);
+    if (guardando.has(clave)) return;
+    guardando.add(clave);
     try {
-      localStorage.setItem(CLAVE_LS, JSON.stringify(guardado));
+      const respuesta = await API.put("/asignaturas.php", {
+        id: Number(a.id),
+        estado: a.estado,
+        calificacion: a.calificacion
+      });
+      if (respuesta && typeof respuesta === "object") {
+        if (typeof respuesta.estado === "string") a.estado = respuesta.estado;
+        if (respuesta.calificacion !== undefined) a.calificacion = respuesta.calificacion;
+      }
     } catch (e) {
-      /* almacenamiento no disponible: se mantiene solo en memoria */
+      revertir(a, anterior);
+      window.alert((e && e.message) || "No se pudo guardar la asignatura.");
+    } finally {
+      guardando.delete(clave);
     }
   }
 
@@ -44,10 +73,14 @@ const GAUD_Asignaturas = (function () {
     return mapa[estado] || "pending";
   }
 
-  const ORDEN_ESTADOS = ["pendiente", "en-curso", "aprobada"];
+  function claseCalificacion(a) {
+    return a.estado === "aprobada" && LETRAS_CALIF.includes(a.calificacion) ? "calif-" + a.calificacion : "";
+  }
 
-  function ciclarEstado(estado) {
-    return ORDEN_ESTADOS[(ORDEN_ESTADOS.indexOf(estado) + 1) % ORDEN_ESTADOS.length];
+  function clasesFila(a) {
+    const base = "course status-" + claseEstado(a.estado);
+    const calif = claseCalificacion(a);
+    return calif ? base + " " + calif : base;
   }
 
   function asignaturasDePeriodo(pensum, trimestre) {
@@ -66,9 +99,15 @@ const GAUD_Asignaturas = (function () {
     return asignaturas.length > 0 && asignaturas.every(function (a) { return a.estado === "aprobada"; });
   }
 
+  function todasConCalificacion(asignaturas) {
+    return asignaturas.length > 0 && asignaturas.every(function (a) {
+      return a.estado === "aprobada" && LETRAS_CALIF.includes(a.calificacion);
+    });
+  }
+
   function colapsoEfectivo(trimestre, asigs) {
     const ov = overridesColapso.get(trimestre);
-    return ov !== undefined ? ov : todasAprobadas(asigs);
+    return ov !== undefined ? ov : todasConCalificacion(asigs);
   }
 
   function agruparPorTrimestre(pensum) {
@@ -99,66 +138,209 @@ const GAUD_Asignaturas = (function () {
     const cont = document.querySelector(".current-list");
     if (!cont) return;
     cont.innerHTML = "";
-    asignaturas.forEach(function (a) {
-      const item = document.createElement("div");
-      item.className = "current-item";
-      const code = document.createElement("div");
-      code.className = "item-code";
-      code.textContent = a.codigo;
-      const name = document.createElement("div");
-      name.className = "item-name";
-      name.textContent = a.nombre;
-      const credits = document.createElement("div");
-      credits.className = "item-credits";
-      credits.textContent = `${a.creditos} cr`;
-      item.appendChild(code);
-      item.appendChild(name);
-      item.appendChild(credits);
-      cont.appendChild(item);
-    });
-    const badge = document.querySelector(".period-badge");
-    if (badge)
-      badge.textContent = `${asignaturas.length} ${asignaturas.length === 1 ? "materia" : "materias"} en curso`;
+    if (!asignaturas.length) {
+      const vacio = document.createElement("div");
+      vacio.className = "current-item";
+      vacio.style.gridColumn = "1 / -1";
+      vacio.textContent = "No hay materias en curso.";
+      cont.appendChild(vacio);
+    } else {
+      asignaturas.forEach(function (a) {
+        const item = document.createElement("div");
+        item.className = "current-item";
+        const code = document.createElement("div");
+        code.className = "item-code";
+        code.textContent = a.codigo;
+        const name = document.createElement("div");
+        name.className = "item-name";
+        name.textContent = a.nombre;
+        const credits = document.createElement("div");
+        credits.className = "item-credits";
+        credits.textContent = `${a.creditos} cr`;
+        item.appendChild(code);
+        item.appendChild(name);
+        item.appendChild(credits);
+        cont.appendChild(item);
+      });
+    }
+    const badge = document.querySelector("#asignaturas-periodo") || document.querySelector(".period-badge");
+    if (badge) {
+      const u = typeof GAUD_DATA !== "undefined" ? GAUD_DATA.usuario : null;
+      const tri = u && u.trimestre_actual ? Number(u.trimestre_actual) : (asignaturas[0] ? Number(asignaturas[0].trimestre) : null);
+      badge.textContent = tri ? `Trimestre ${tri}` : "—";
+    }
   }
 
   function renderCalif(a, cell) {
     cell.innerHTML = "";
-    if (a.estado !== "aprobada") return;
-    const label = document.createElement("label");
-    label.className = "calif-label";
-    label.textContent = "Calificación";
-    const input = document.createElement("input");
-    input.type = "number";
-    input.min = "0";
-    input.max = "5";
-    input.step = "0.01";
-    input.className = "calif-input";
-    input.value = a.calificacion == null ? "" : a.calificacion;
-    input.addEventListener("click", function (e) { e.stopPropagation(); });
-    input.addEventListener("change", function () {
-      const v = String(input.value).trim();
-      if (v === "") {
-        a.calificacion = null;
-        input.classList.remove("campo-invalido");
-      } else {
-        const n = Number(v);
-        if (!Number.isFinite(n) || n < 0 || n > 5) {
-          input.classList.add("campo-invalido");
-          return;
+    if (a.estado !== "aprobada") {
+      const vacio = document.createElement("span");
+      vacio.className = "calif-vacio";
+      vacio.textContent = "—";
+      cell.appendChild(vacio);
+      return;
+    }
+    const row = document.createElement("div");
+    row.className = "calif-row";
+    LETRAS_CALIF.forEach(function (letra) {
+      const bub = document.createElement("button");
+      bub.type = "button";
+      bub.className = "bub bub-" + letra + (a.calificacion === letra ? " activo" : "");
+      bub.textContent = letra;
+      bub.title = RANGOS_CALIF[letra];
+      bub.setAttribute("aria-label", "Calificación " + letra);
+      bub.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const fila = cell.closest(".course");
+        const anterior = { estado: a.estado, calificacion: a.calificacion };
+        a.calificacion = a.calificacion === letra ? null : letra;
+        if (fila) {
+          actualizarFila(fila, a);
+          const termEl = fila.closest(".term");
+          if (termEl)
+            sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.trimestre)));
+          aplicar();
         }
-        input.classList.remove("campo-invalido");
-        a.calificacion = n;
-      }
-      guardarCambios(a);
+        guardarCambios(a, anterior);
+      });
+      row.appendChild(bub);
     });
-    cell.appendChild(label);
-    cell.appendChild(input);
+    cell.appendChild(row);
+  }
+
+  function crearChip(a) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "estado-chip st-" + claseEstado(a.estado);
+    chip.setAttribute("aria-haspopup", "true");
+    chip.setAttribute("aria-expanded", "false");
+    const dot = document.createElement("span");
+    dot.className = "estado-dot st-" + claseEstado(a.estado);
+    const label = document.createElement("span");
+    label.className = "estado-chip-label";
+    label.textContent = ETIQUETA_ESTADOS[a.estado] || a.estado;
+    const caret = document.createElement("span");
+    caret.className = "estado-caret";
+    caret.setAttribute("aria-hidden", "true");
+    caret.textContent = "▾";
+    chip.appendChild(dot);
+    chip.appendChild(label);
+    chip.appendChild(caret);
+    return chip;
   }
 
   function actualizarFila(fila, a) {
-    fila.className = `course status-${claseEstado(a.estado)}`;
+    fila.className = clasesFila(a);
     fila.dataset.estado = a.estado;
+    const chip = fila.querySelector(".estado-chip");
+    if (chip) {
+      chip.className = "estado-chip st-" + claseEstado(a.estado);
+      const dot = chip.querySelector(".estado-dot");
+      if (dot) dot.className = "estado-dot st-" + claseEstado(a.estado);
+      const label = chip.querySelector(".estado-chip-label");
+      if (label) label.textContent = ETIQUETA_ESTADOS[a.estado] || a.estado;
+    }
     renderCalif(a, fila.querySelector(".course-calif"));
+  }
+
+  let menuEl = null;
+  let menuFila = null;
+
+  function crearMenu() {
+    if (menuEl) return;
+    menuEl = document.createElement("div");
+    menuEl.className = "estado-menu";
+    menuEl.setAttribute("role", "menu");
+    menuEl.hidden = true;
+    ORDEN_MENU.forEach(function (estado) {
+      const opt = document.createElement("button");
+      opt.type = "button";
+      opt.className = "estado-opt";
+      opt.dataset.estado = estado;
+      opt.setAttribute("role", "menuitemradio");
+      opt.setAttribute("aria-checked", "false");
+      const dot = document.createElement("span");
+      dot.className = "estado-dot st-" + claseEstado(estado);
+      const label = document.createElement("span");
+      label.className = "estado-opt-label";
+      label.textContent = ETIQUETA_ESTADOS[estado];
+      const check = document.createElement("span");
+      check.className = "estado-check";
+      check.setAttribute("aria-hidden", "true");
+      check.textContent = "✓";
+      opt.appendChild(dot);
+      opt.appendChild(label);
+      opt.appendChild(check);
+      opt.addEventListener("click", function () { elegirEstado(estado); });
+      menuEl.appendChild(opt);
+    });
+    document.body.appendChild(menuEl);
+    document.addEventListener("click", function (e) {
+      if (menuEl && !menuEl.hidden && !e.target.closest(".estado-menu")) cerrarMenu();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && menuEl && !menuEl.hidden) cerrarMenu();
+    });
+    window.addEventListener("scroll", function () {
+      if (menuEl && !menuEl.hidden) cerrarMenu();
+    }, true);
+    window.addEventListener("resize", function () {
+      if (menuEl && !menuEl.hidden) cerrarMenu();
+    });
+  }
+
+  function abrirMenu(fila) {
+    if (!menuEl) crearMenu();
+    const a = buscarPorId(fila.dataset.id);
+    const chip = fila.querySelector(".estado-chip");
+    if (!a || !chip) return;
+    menuFila = fila;
+    menuEl.querySelectorAll(".estado-opt").forEach(function (opt) {
+      const activa = opt.dataset.estado === a.estado;
+      opt.classList.toggle("activo", activa);
+      opt.setAttribute("aria-checked", String(activa));
+    });
+    chip.setAttribute("aria-expanded", "true");
+    menuEl.hidden = false;
+    const rect = chip.getBoundingClientRect();
+    const mw = menuEl.offsetWidth;
+    const mh = menuEl.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = rect.left;
+    if (x + mw > vw - 8) x = Math.max(8, vw - 8 - mw);
+    let y = rect.bottom + 6;
+    if (y + mh > vh - 8) y = Math.max(8, rect.top - 6 - mh);
+    menuEl.style.left = x + "px";
+    menuEl.style.top = y + "px";
+  }
+
+  function cerrarMenu() {
+    if (!menuEl) return;
+    menuEl.hidden = true;
+    if (menuFila) {
+      const chip = menuFila.querySelector(".estado-chip");
+      if (chip) chip.setAttribute("aria-expanded", "false");
+    }
+    menuFila = null;
+  }
+
+  function elegirEstado(estado) {
+    const fila = menuFila;
+    cerrarMenu();
+    if (!fila) return;
+    const a = buscarPorId(fila.dataset.id);
+    if (!a || a.estado === estado) return;
+    const anterior = { estado: a.estado, calificacion: a.calificacion };
+    a.estado = estado;
+    if (estado !== "aprobada") a.calificacion = null;
+    actualizarFila(fila, a);
+    const termEl = fila.closest(".term");
+    if (termEl)
+      sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.trimestre)));
+    renderCurrent(obtenerPensum().filter(function (x) { return x.estado === "en-curso"; }));
+    aplicar();
+    guardarCambios(a, anterior);
   }
 
   function renderPensum(pensum) {
@@ -174,6 +356,7 @@ const GAUD_Asignaturas = (function () {
       const head = document.createElement("thead");
       head.className = "term-head";
       head.setAttribute("role", "button");
+      head.setAttribute("tabindex", "0");
       head.setAttribute("aria-expanded", "true");
       const headRow = document.createElement("tr");
       const thMain = document.createElement("th");
@@ -202,7 +385,8 @@ const GAUD_Asignaturas = (function () {
       body.className = "term-body";
       asigs.forEach(function (a) {
         const fila = document.createElement("tr");
-        fila.className = `course status-${claseEstado(a.estado)}`;
+        fila.className = clasesFila(a);
+        fila.dataset.id = String(a.id);
         fila.dataset.codigo = a.codigo;
         fila.dataset.estado = a.estado;
         const tdMain = document.createElement("td");
@@ -218,11 +402,15 @@ const GAUD_Asignaturas = (function () {
         const tdCredits = document.createElement("td");
         tdCredits.className = "course-credits";
         tdCredits.textContent = `${a.creditos} cr`;
+        const tdEstado = document.createElement("td");
+        tdEstado.className = "course-estado";
+        tdEstado.appendChild(crearChip(a));
         const tdCalif = document.createElement("td");
         tdCalif.className = "course-calif";
         renderCalif(a, tdCalif);
         fila.appendChild(tdMain);
         fila.appendChild(tdCredits);
+        fila.appendChild(tdEstado);
         fila.appendChild(tdCalif);
         body.appendChild(fila);
       });
@@ -273,10 +461,10 @@ const GAUD_Asignaturas = (function () {
   function aplicarFiltro(busqueda, estado, pensum) {
     if (typeof document === "undefined") return 0;
     const data = pensum || (typeof GAUD_DATA !== "undefined" ? GAUD_DATA.pensum : []);
-    const visibles = new Set(filtrarPensum(data, busqueda, estado).map(function (a) { return a.codigo; }));
+    const visibles = new Set(filtrarPensum(data, busqueda, estado).map(function (a) { return String(a.id); }));
     let count = 0;
     document.querySelectorAll(".pensum-grid .course").forEach(function (c) {
-      const visible = visibles.has(c.dataset.codigo);
+      const visible = visibles.has(c.dataset.id);
       c.classList.toggle("oculto", !visible);
       if (visible) count++;
     });
@@ -303,7 +491,8 @@ const GAUD_Asignaturas = (function () {
   function enlazarGrid() {
     if (typeof document === "undefined") return;
     const cont = document.querySelector(".pensum-grid");
-    if (!cont) return;
+    if (!cont || gridEnlazado) return;
+    gridEnlazado = true;
     cont.addEventListener("click", function (e) {
       const head = e.target.closest(".term-head");
       if (head) {
@@ -313,36 +502,29 @@ const GAUD_Asignaturas = (function () {
       }
       const fila = e.target.closest(".course");
       if (!fila || e.target.closest(".course-calif")) return;
-      const pensum = typeof GAUD_DATA !== "undefined" ? GAUD_DATA.pensum : [];
-      const a = pensum.find(function (x) { return x.codigo === fila.dataset.codigo; });
-      if (!a) return;
-      a.estado = ciclarEstado(a.estado);
-      if (a.estado !== "aprobada") a.calificacion = null;
-      guardarCambios(a);
-      actualizarFila(fila, a);
-      const termEl = fila.closest(".term");
-      if (termEl)
-        sincronizarTerm(termEl, asignaturasDePeriodo(pensum, Number(termEl.dataset.trimestre)));
-      renderCurrent(pensum.filter(function (x) { return x.estado === "en-curso"; }));
-      aplicar();
+      e.stopPropagation();
+      if (menuEl && !menuEl.hidden && menuFila === fila) {
+        cerrarMenu();
+      } else {
+        abrirMenu(fila);
+      }
     });
-    cont.querySelectorAll(".term-head").forEach(function (head) {
-      head.setAttribute("tabindex", "0");
-      head.setAttribute("role", "button");
-      head.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          const termEl = head.closest(".term");
-          if (termEl) alternarTerm(termEl);
-        }
-      });
+    cont.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const head = e.target.closest(".term-head");
+      if (!head) return;
+      e.preventDefault();
+      const termEl = head.closest(".term");
+      if (termEl) alternarTerm(termEl);
     });
   }
 
   function enlazarHerramientas() {
-    if (typeof document === "undefined") return;
+    if (typeof document === "undefined" || herramientasEnlazadas) return;
     busquedaEl = document.querySelector(".pensum-search input");
     botonesFiltro = Array.from(document.querySelectorAll(".pensum-filters button"));
     if (!busquedaEl && botonesFiltro.length === 0) return;
+    herramientasEnlazadas = true;
     if (busquedaEl) busquedaEl.addEventListener("input", aplicar);
     botonesFiltro.forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -353,29 +535,68 @@ const GAUD_Asignaturas = (function () {
     aplicar();
   }
 
-  function enlazar() {
-    if (typeof GAUD_DATA === "undefined") return;
-    const pensum = GAUD_DATA.pensum;
-    cargarGuardado(pensum);
+  function render() {
+    if (typeof document === "undefined") return;
+    const pensum = obtenerPensum();
     renderCurrent(pensum.filter(function (a) { return a.estado === "en-curso"; }));
     renderPensum(pensum);
     enlazarGrid();
     enlazarHerramientas();
+    aplicar();
+  }
+
+  async function cargar() {
+    if (!API || typeof GAUD_DATA === "undefined" || !GAUD_DATA.usuario) return;
+    const id = String(GAUD_DATA.usuario.id);
+    if (usuarioCargado === id || pidiendo.has(id)) return;
+    pidiendo.add(id);
+    try {
+      const data = await API.get("/asignaturas.php");
+      if (usuarioCargado === id) return;
+      GAUD_DATA.pensum = Array.isArray(data) ? data : [];
+      usuarioCargado = id;
+      render();
+    } catch (e) {
+      if (e && e.status === 401) {
+        usuarioCargado = null;
+        return;
+      }
+      window.alert((e && e.message) || "No se pudo cargar el pensum.");
+    } finally {
+      pidiendo.delete(id);
+    }
+  }
+
+  function enlazar() {
+    if (typeof document === "undefined" || typeof GAUD_DATA === "undefined") return;
+    document.addEventListener("gaud:sesion", function (e) {
+      const sesion = e.detail && e.detail.sesion;
+      if (sesion && sesion.usuario) {
+        usuarioCargado = null;
+        cargar();
+      }
+    });
+    if (GAUD_DATA.usuario) cargar();
   }
 
   return {
-    CLAVE_LS,
     ESTADOS_VALIDOS,
-    ORDEN_ESTADOS,
+    ORDEN_MENU,
+    ETIQUETA_ESTADOS,
+    LETRAS_CALIF,
+    RANGOS_CALIF,
     normalizar,
-    cargarGuardado,
+    obtenerPensum,
+    buscarPorId,
     guardarCambios,
     claseEstado,
-    ciclarEstado,
+    claseCalificacion,
+    clasesFila,
     asignaturasDePeriodo,
     calcularCreditos,
     contarAprobadas,
     todasAprobadas,
+    todasConCalificacion,
     colapsoEfectivo,
     agruparPorTrimestre,
     coincideBusqueda,
@@ -383,7 +604,12 @@ const GAUD_Asignaturas = (function () {
     filtrarPensum,
     renderCurrent,
     renderCalif,
+    crearChip,
     actualizarFila,
+    crearMenu,
+    abrirMenu,
+    cerrarMenu,
+    elegirEstado,
     renderPensum,
     actualizarCabecera,
     sincronizarTerm,
@@ -394,6 +620,8 @@ const GAUD_Asignaturas = (function () {
     aplicar,
     enlazarGrid,
     enlazarHerramientas,
+    render,
+    cargar,
     enlazar
   };
 })();
