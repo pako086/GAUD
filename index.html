@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión | Gestión Académica GAUD</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=2">
+    <script src="js/api.js" defer></script>
+    <script src="js/usuarios.js" defer></script>
+    <script src="js/guardas.js" defer></script>
     <script src="js/validaciones.js" defer></script>
 </head>
-<body>
+<body data-pagina="login">
 
     <div class="auth-container">
 
@@ -19,6 +22,10 @@
                 </div>
                 <h1>Gestión Académica</h1>
                 <p>Inicia sesión en tu cuenta</p>
+            </div>
+
+            <div class="auth-banner auth-banner-success" id="banner-exito">
+                Cuenta creada. Inicia sesión para continuar.
             </div>
 
             <form action="#" method="post">
@@ -47,9 +54,6 @@
 
             <div class="auth-footer">
                 ¿No tienes cuenta? <a href="registro.html">Regístrate</a>
-            </div>
-            <div class="auth-footer">
-                Puerta trasera para pruebas <a href="dashboard-tommisan.html">Click aquí</a>
             </div>
         </div>
 
