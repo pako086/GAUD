@@ -1,18 +1,35 @@
-// Da feedback visual (una pequeña animacion) al pasar el mouse sobre el logo,
-// que ademas ahora es un enlace directo al Dashboard.
-function activarFeedbackLogo() {
-    const logo = document.getElementById("logo-dashboard");
+const GAUD_Logo = (function () {
+  const CLASE = "logo-animado";
+
+  function obtenerLogo() {
+    if (typeof document === "undefined") return null;
+    return document.querySelector("#logo-dashboard") || document.querySelector(".logo-img");
+  }
+
+  function animar(el) {
+    if (!el) return false;
+    el.classList.remove(CLASE);
+    void el.offsetWidth;
+    el.classList.add(CLASE);
+    return true;
+  }
+
+  function quitar(el) {
+    if (!el) return false;
+    el.classList.remove(CLASE);
+    return true;
+  }
+
+  function enlazar() {
+    const logo = obtenerLogo();
     if (!logo) return;
+    logo.addEventListener("mouseenter", function () { animar(logo); });
+    logo.addEventListener("mouseleave", function () { quitar(logo); });
+  }
 
-    logo.addEventListener("mouseenter", () => {
-        logo.style.transform = "scale(1.08)";
-    });
+  return { CLASE, obtenerLogo, animar, quitar, enlazar };
+})();
 
-    logo.addEventListener("mouseleave", () => {
-        logo.style.transform = "scale(1)";
-    });
-
-    return logo;
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", function () { GAUD_Logo.enlazar(); });
 }
-
-document.addEventListener("DOMContentLoaded", activarFeedbackLogo);

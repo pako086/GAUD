@@ -6,16 +6,16 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Asignaturas — GAUD</title>
 <link href="icon/icon-web.png" rel="icon" type="image/png"/>
-<link href="css/styles.css" rel="stylesheet"/>
-<script defer="" src="js/datos-seed.js"></script>
-<script defer="" src="js/fechas.js"></script>
-<script defer="" src="js/validaciones.js"></script>
-<script defer="" src="js/header.js"></script>
+<link href="css/styles.css?v=6" rel="stylesheet"/>
+<script defer="" src="js/api.js"></script>
+<script defer="" src="js/usuarios.js"></script>
+<script defer="" src="js/guardas.js"></script>
+<script defer="" src="js/fechas.js?v=1"></script>
+<script defer="" src="js/header.js?v=3"></script>
 <script defer="" src="js/logo.js"></script>
-<script defer="" src="js/asignaturas.js"></script>
-<script defer="" src="js/terminos.js"></script>
+<script defer="" src="js/asignaturas.js?v=4"></script>
 </head>
-<body>
+<body data-pagina="asignaturas">
 <div class="app-layout">
 <!-- Sidebar -->
 <aside class="sidebar">
@@ -36,7 +36,7 @@
 <a href="perfil.html">
 <span class="nav-icon"><img alt="" src="icon/user.png"/></span> Mi Perfil
         </a>
-<a href="index.html">
+<a href="#" data-logout>
 <span class="nav-icon"><img alt="" src="icon/user-logout.png"/></span> Cerrar sesión
         </a>
 </nav>
@@ -60,7 +60,7 @@
 <p>Ingeniería en Software · UAPA · Pensum vigente</p>
 </div>
 <div class="topbar-actions">
-<a class="btn btn-outline" href="dashboard-tommisan.html">Volver</a>
+<span class="badge badge-info" id="topbar-periodo">—</span>
 </div>
 </header>
 <div class="page-content">
@@ -68,7 +68,7 @@
 <div class="current-section">
 <div class="section-title">
 <span>Materias cursando actualmente</span>
-<span class="period-badge">7mo Trimestre · Ago - Oct 2026</span>
+<span class="period-badge" id="asignaturas-periodo">—</span>
 </div>
 <div class="current-list"></div>
 </div>
@@ -82,11 +82,11 @@
 <div><strong>225</strong> créditos · <strong>16</strong> trimestres</div>
 </div>
 </div>
-<div class="legend">
-<span><i class="dot dot-approved"></i> Aprobada</span>
-<span><i class="dot dot-current"></i> En curso</span>
-<span><i class="dot dot-pending"></i> Pendiente</span>
-</div>
+          <div class="legend legend-calif">
+            <span class="legend-calif-item"><i class="bub-mini bub-mini-A">A</i> 90-100</span>
+            <span class="legend-calif-item"><i class="bub-mini bub-mini-B">B</i> 80-89</span>
+            <span class="legend-calif-item"><i class="bub-mini bub-mini-C">C</i> 70-79</span>
+          </div>
 <div class="pensum-tools">
 <div class="pensum-search">
 <input aria-label="Buscar asignatura" placeholder="Buscar por código o nombre…" type="text"/>
@@ -97,27 +97,13 @@
 <button data-estado="en-curso" type="button">En curso</button>
 <button data-estado="pendiente" type="button">Pendientes</button>
 </div>
-<span class="pensum-count">62 asignaturas</span>
+<span class="pensum-count" id="asignaturas-count">0 asignaturas</span>
 </div>
 <div class="pensum-scroll">
 <div class="pensum-grid"></div>
 </div>
 </div>
 </main>
-</div>
-<div class="overlay" hidden="" id="terminos-overlay">
-<section aria-describedby="terminos-descripcion" aria-labelledby="terminos-titulo" aria-modal="true" class="modal" role="dialog">
-<div class="contenidoT">
-<h2 id="terminos-titulo">Términos y condiciones</h2>
-<p id="terminos-descripcion">
-          Para continuar en GAUD debes aceptar los términos y condiciones de uso.
-        </p>
-<div class="button-container">
-<button class="btn btn-outline" id="rechazar-terminos" type="button">Rechazar</button>
-<button class="btn btn-primary" id="aceptar-terminos" type="button">Aceptar</button>
-</div>
-</div>
-</section>
 </div>
 </body>
 </html>
