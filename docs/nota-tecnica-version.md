@@ -1,4 +1,4 @@
-# Nota técnica de versión — GAUD 0.1.0 (propuesta)
+# Nota técnica de versión — GAUD 0.1.0
 
 **Tipo:** versión de desarrollo / documentación  
 **Fecha de preparación:** 14 de octubre de 2026  
