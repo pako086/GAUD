@@ -78,21 +78,8 @@ class AuthController extends Controller
     {
         $inscripciones = $this->inscripcionesDelUsuario($user->id);
 
-        $data = [
-            'id' => $user->id,
-            'nombre' => $user->nombre,
-            'email' => $user->email,
-            'telefono' => $user->telefono,
-            'direccion' => $user->direccion,
-            'universidad' => $user->universidad?->nombre,
-            'carrera' => $user->carrera?->nombre,
-            'universidad_id' => $user->universidad_id,
-            'carrera_id' => $user->carrera_id,
-            'modalidad' => $user->modalidad,
-            'terminos_aceptado_en' => $user->terminos_aceptado_en?->format('Y-m-d H:i:s'),
-            'creado_en' => $user->creado_en?->format('Y-m-d H:i:s'),
-            'trimestre_actual' => $this->academico->calcularTrimestre($inscripciones),
-        ];
+        $data = $this->perfilBase($user);
+        $data['trimestre_actual'] = $this->academico->calcularTrimestre($inscripciones);
 
         return $this->ok($data, $code);
     }
