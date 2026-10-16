@@ -1,59 +1,526 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# GAUD — Sistema de Gestión Académica
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Entrega:** Fase 4  
+**Aplicación web completa con frontend HTML5, CSS3, backend en Laravel y base de datos MariaDB/MySQL**
 
-## About Laravel
+GAUD es un sistema académico web que permite gestionar información universitaria relacionada con estudiantes, universidades, carreras, asignaturas e inscripciones.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+La aplicación permite:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Registrar una cuenta de estudiante.
+- Iniciar sesión con validación de credenciales.
+- Mantener la sesión activa de forma segura.
+- Consultar y actualizar el perfil del usuario.
+- Cambiar la contraseña.
+- Eliminar la cuenta.
+- Visualizar un dashboard académico con progreso, créditos, índice académico y distribución de calificaciones.
+- Consultar las asignaturas del plan de estudios.
+- Actualizar el estado de cada asignatura: `pendiente`, `en-curso` o `aprobada`.
+- Registrar calificaciones `A`, `B` o `C` cuando la asignatura está aprobada.
+- Consultar un catálogo público de universidades y carreras.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+El proyecto se construyó de manera progresiva durante el trimestre:
 
-## Learning Laravel
+| Fase | Enfoque |
+|---|---|
+| Fase 1 | Estructura visual con HTML5 y CSS |
+| Fase 2 | JavaScript, DOM, validaciones y componentes dinámicos |
+| Fase 3 | Backend, sesiones, base de datos y CRUD |
+| Fase 4 | Integración con framework, ejecución reproducible y documentación profesional |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Tecnologías y versiones
 
-## Laravel Sponsors
+| Tecnología | Versión utilizada | Uso en el proyecto |
+|---|---:|---|
+| PHP | 8.2.12 | Lenguaje del backend |
+| Laravel | 12.70.0 | Framework PHP para rutas, controladores, sesiones, middleware y modelos |
+| Composer | 2.10.3 | Gestor de dependencias de PHP |
+| MariaDB | 10.4.32 | Base de datos local |
+| XAMPP | Compatible con PHP 8.2 | Servidor local con Apache, PHP y MariaDB/MySQL |
+| HTML5 | — | Estructura del frontend |
+| CSS | — | Estilos del frontend |
+| JavaScript | Lógica del frontend, consumo de la API, validaciones y manipulación del DOM |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+La aplicación **no requiere Node.js, npm, Vite ni otro build tool** para ejecutarse localmente.
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Requisitos previos
 
-## Contributing
+Para ejecutar el proyecto necesitas:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. **XAMPP** u otro entorno local con:
+   - PHP 8.2 o superior
+   - Apache o servidor PHP
+   - MySQL/MariaDB
 
-## Code of Conduct
+2. **Composer** instalado y disponible en la terminal.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+3. Un **navegador web** moderno.
 
-## Security Vulnerabilities
+4. El repositorio clonado o descargado.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+No se requiere instalación adicional de frontend.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Estructura del repositorio
+
+```text
+GAUD/
+├── README.md
+└── laravel/
+    ├── app/
+    │   ├── Http/
+    │   │   ├── Controllers/
+    │   │   └── Middleware/
+    │   ├── Models/
+    │   └── Services/
+    ├── bootstrap/
+    ├── database/
+    │   └── gaud.sql
+    ├── public/
+    │   ├── css/
+    │   ├── icon/
+    │   ├── js/
+    │   ├── index.html
+    │   ├── registro.html
+    │   ├── dashboard-tommisan.html
+    │   ├── asignaturas.html
+    │   └── perfil.html
+    ├── routes/
+    │   └── web.php
+    ├── .env.example
+    ├── artisan
+    └── composer.json
+```
+
+Notas importantes:
+
+- La aplicación Laravel está dentro de `laravel/`.
+- El frontend estático está en `laravel/public/`.
+- El script de base de datos está en `laravel/database/gaud.sql`.
+- El proyecto **no usa migrations de Laravel** para crear la base de datos. La fuente de verdad del esquema y datos demo es `laravel/database/gaud.sql`.
+
+---
+
+## Instalación local
+
+### 1. Obtener el código
+
+Si clonas el repositorio:
+
+```bash
+git clone https://github.com/pako086/GAUD.git
+cd GAUD
+```
+
+Si descargaste el proyecto como ZIP, extrae el contenido y entra a la carpeta que contiene `laravel/`.
+
+---
+
+### 2. Iniciar XAMPP
+
+Abre el panel de control de XAMPP e inicia:
+
+- **Apache**
+- **MySQL/MariaDB**
+
+Para esta aplicación, el servidor de desarrollo recomendado es el propio servidor de Laravel:
+
+```bash
+php artisan serve
+```
+
+Apache de XAMPP se usa principalmente para tener MySQL/MariaDB disponible y, opcionalmente, para herramientas como phpMyAdmin.
+
+---
+
+### 3. Importar la base de datos
+
+El script SQL se encuentra en:
+
+```text
+laravel/database/gaud.sql
+```
+
+Este script:
+
+- Crea la base de datos `gaud` si no existe.
+- Crea las tablas del sistema.
+- Inserta datos de prueba.
+- Incluye el usuario de demostración.
+
+#### Opción A: usando phpMyAdmin
+
+1. Inicia MySQL en XAMPP.
+2. Abre phpMyAdmin:
+   ```text
+   http://localhost/phpmyadmin
+   ```
+3. Ve a la pestaña **Importar**.
+4. Selecciona el archivo:
+   ```text
+   laravel/database/gaud.sql
+   ```
+5. Ejecuta la importación.
+
+#### Opción B: usando la terminal
+
+Desde la carpeta raíz del proyecto:
+
+```bash
+mysql -u root < laravel/database/gaud.sql
+```
+
+Si tu MySQL/MariaDB requiere contraseña:
+
+```bash
+mysql -u root -p < laravel/database/gaud.sql
+```
+
+> **Advertencia:** el script elimina y vuelve a crear las tablas. Si lo importas nuevamente, los datos actuales de la base de datos `gaud` se reemplazarán por los datos demo.
+
+---
+
+### 4. Instalar dependencias y configurar la aplicación
+
+Entra a la carpeta Laravel:
+
+```bash
+cd laravel
+```
+
+Opción rápida:
+
+```bash
+composer setup
+```
+
+Este comando ejecuta:
+
+```bash
+composer install
+```
+
+Copia `.env.example` a `.env` si `.env` no existe y genera la clave de la aplicación.
+
+Si prefieres hacerlo paso a paso:
+
+```bash
+composer install
+```
+
+Luego crea el archivo de entorno:
+
+```bash
+# Windows
+copy .env.example .env
+
+# Linux/macOS
+cp .env.example .env
+```
+
+Genera la clave de la aplicación:
+
+```bash
+php artisan key:generate
+```
+
+---
+
+### 5. Verificar configuración de base de datos
+
+Abre el archivo:
+
+```text
+laravel/.env
+```
+
+Asegúrate de que los valores de base de datos coincidan con tu entorno local.
+
+Con la configuración predeterminada de XAMPP, normalmente serán:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=gaud
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Si tu MySQL/MariaDB usa una contraseña diferente, actualiza:
+
+```env
+DB_PASSWORD=tu_contraseña
+```
+
+Guarda el archivo.
+
+---
+
+### 6. Ejecutar la aplicación
+
+Desde la carpeta `laravel/`:
+
+```bash
+php artisan serve
+```
+
+Alternativamente:
+
+```bash
+composer dev
+```
+
+La aplicación normalmente quedará disponible en:
+
+```text
+http://127.0.0.1:8000
+```
+
+Si el puerto `8000` está ocupado:
+
+```bash
+php artisan serve --port=8080
+```
+
+Y accede a:
+
+```text
+http://127.0.0.1:8080
+```
+
+---
+
+## Usuario de demostración
+
+El script SQL incluye un usuario de demostración.
+
+| Campo | Valor |
+|---|---|
+| Correo | `estudiante@gaud.dev` |
+| Contraseña | `Gaud2026!` |
+
+Este usuario permite probar:
+
+- Inicio de sesión.
+- Dashboard académico.
+- Asignaturas.
+- Perfil.
+- Cambio de contraseña.
+- Actualización de estado de asignaturas.
+- Cierre de sesión.
+
+---
+
+## Uso de la aplicación
+
+1. Abre la aplicación en el navegador.
+2. Inicia sesión con el usuario demo o crea una cuenta nueva.
+3. Tras iniciar sesión, accedes al dashboard académico.
+4. Desde el dashboard puedes revisar:
+   - Progreso general.
+   - Créditos ganados.
+   - Créditos totales.
+   - Asignaturas aprobadas.
+   - Asignaturas en curso.
+   - Asignaturas pendientes.
+   - Índice académico.
+   - Distribución de calificaciones.
+5. En la sección de asignaturas puedes actualizar el estado de cada materia.
+6. En el perfil puedes actualizar datos personales, cambiar la contraseña o eliminar la cuenta.
+
+---
+
+## Base de datos
+
+La base de datos se llama:
+
+```text
+gaud
+```
+
+Contiene las siguientes tablas:
+
+| Tabla | Descripción |
+|---|---|
+| `universidades` | Universidades disponibles en el catálogo |
+| `carreras` | Carreras ofrecidas por cada universidad |
+| `asignaturas` | Asignaturas del plan de estudios |
+| `usuarios` | Estudiantes registrados |
+| `inscripciones` | Relación entre usuarios y asignaturas, con estado y calificación |
+
+### Relaciones principales
+
+- Una universidad puede ofrecer muchas carreras.
+- Una carrera puede tener muchas asignaturas.
+- Un usuario pertenece a una universidad y a una carrera.
+- Un usuario puede estar inscrito en muchas asignaturas.
+- Una asignatura puede estar inscrita por muchos usuarios.
+- La tabla `inscripciones` guarda el estado académico y la calificación de cada usuario por asignatura.
+
+### Datos de prueba
+
+El script SQL incluye datos de ejemplo para:
+
+- Universidad Abierta Para Adultos.
+- Carrera de Ingeniería en Software.
+- Asignaturas del plan de estudios.
+- Usuario de demostración.
+- Inscripciones de ejemplo para el usuario demo.
+
+---
+
+## API
+
+La API se sirve bajo:
+
+```text
+/api
+```
+
+Las rutas conservan el sufijo `.php` para mantener compatibilidad con el frontend desarrollado en fases anteriores.
+
+Formato de respuesta:
+
+Éxito:
+
+```json
+{
+  "ok": true,
+  "data": {}
+}
+```
+
+Error:
+
+```json
+{
+  "ok": false,
+  "error": "Mensaje de error"
+}
+```
+
+### Endpoints
+
+| Método | Ruta | Autenticación | Descripción |
+|---|---|---:|---|
+| `GET` | `/api/auth.php` | Sí | Obtiene el usuario autenticado |
+| `POST` | `/api/auth.php` | No | Inicia sesión |
+| `POST` | `/api/auth.php?action=logout` | Sí | Cierra la sesión |
+| `POST` | `/api/usuarios.php` | No | Crea una cuenta nueva |
+| `GET` | `/api/usuarios.php` | Sí | Obtiene el perfil del usuario autenticado |
+| `PUT` | `/api/usuarios.php` | Sí | Actualiza el perfil del usuario |
+| `PUT` | `/api/usuarios.php?action=password` | Sí | Cambia la contraseña |
+| `DELETE` | `/api/usuarios.php` | Sí | Elimina la cuenta del usuario autenticado |
+| `GET` | `/api/catalogo.php` | No | Obtiene universidades y carreras |
+| `GET` | `/api/dashboard.php` | Sí | Obtiene el resumen académico del usuario |
+| `GET` | `/api/asignaturas.php` | Sí | Obtiene asignaturas con estado del usuario |
+| `PUT` | `/api/asignaturas.php` | Sí | Actualiza estado o calificación de una asignatura |
+
+### Estados de asignatura
+
+Los estados permitidos son:
+
+```text
+pendiente
+en-curso
+aprobada
+```
+
+Las calificaciones permitidas son:
+
+```text
+A
+B
+C
+```
+
+---
+
+## Conceptos de Laravel aplicados
+
+### Rutas
+
+Las rutas se definen en:
+
+```text
+laravel/routes/web.php
+```
+
+Laravel recibe las peticiones HTTP y las dirige hacia los controladores correspondientes.
+
+### Controladores
+
+La lógica de la API está organizada en controladores dentro de:
+
+```text
+laravel/app/Http/Controllers/
+```
+
+Controladores principales:
+
+| Controlador | Responsabilidad |
+|---|---|
+| `AuthController` | Login, logout y usuario autenticado |
+| `UserController` | Registro, perfil, actualización, contraseña y eliminación de cuenta |
+| `CatalogoController` | Catálogo público de universidades y carreras |
+| `DashboardController` | Resumen académico del usuario |
+| `AsignaturaController` | Consulta y actualización de asignaturas/inscripciones |
+
+### Middleware
+
+Las rutas privadas usan middleware para verificar que el usuario esté autenticado antes de ejecutar el controlador.
+
+### Modelos y base de datos
+
+Los modelos Eloquent están en:
+
+```text
+laravel/app/Models/
+```
+
+Laravel se encarga de interactuar con la base de datos mediante los modelos y las relaciones definidas.
+
+### Inyección de dependencias
+
+La aplicación usa inyección de dependencias por constructor.
+
+Por ejemplo, los controladores que necesitan cálculos académicos reciben la clase `Academico` a través del constructor:
+
+```php
+public function __construct(protected Academico $academico)
+{
+}
+```
+
+El contenedor de Laravel resuelve automáticamente esa dependencia.
+
+### Sesiones
+
+La aplicación usa sesiones de Laravel para mantener al usuario autenticado.
+
+Durante el login:
+
+- Se valida el correo y la contraseña.
+- Se inicia la sesión.
+- Se regenera la sesión para evitar fijación de sesión.
+
+Durante el logout:
+
+- Se cierra la sesión.
+- Se invalida la sesión.
+- Se regenera el token CSRF.
+
+---
+
+## Integrantes del equipo
+
+| Integrante | Rol |
+|---|---|
+| `[Nombre Apellido]` | `[Rol: frontend, backend, base de datos, documentación, etc.]` |
+| `Fidel Ernesto Arias Garcia` | `Full Stack Dev` |
