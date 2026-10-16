@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const BASE = "/GAUD/api";
+  const BASE = "/api";
 
   function manejarRespuesta(resp) {
     return resp.json().then(function (body) {
