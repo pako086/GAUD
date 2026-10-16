@@ -522,5 +522,4 @@ Durante el logout:
 
 | Integrante | Rol |
 |---|---|
-| `[Nombre Apellido]` | `[Rol: frontend, backend, base de datos, documentación, etc.]` |
 | `Fidel Ernesto Arias Garcia` | `Full Stack Dev` |
