@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Inscripcion;
+use App\Models\Usuario;
+use App\Services\Academico;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class AuthController extends Controller
+{
+    public function __construct(protected Academico $academico)
+    {
+    }
+
+    /**
+     * GET /api/auth.php → datos del usuario autenticado o 401.
+     */
+    public function me()
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return $this->fail('No autenticado', 401);
+        }
+
+        return $this->respondUsuario($user);
+    }
+
+    /**
+     * POST /api/auth.php → login.
+     * POST /api/auth.php?action=logout → logout.
+     */
+    public function handlePost(Request $request)
+    {
+        if ($request->query('action') === 'logout') {
+            return $this->logout($request);
+        }
+
+        return $this->login($request);
+    }
+
+    protected function login(Request $request)
+    {
+        $email = trim((string) $request->input('email', ''));
+        $password = (string) $request->input('password', '');
+
+        if ($email === '' || $password === '') {
+            return $this->fail('Email y contraseña son obligatorios', 422);
+        }
+
+        $user = Usuario::where('email', $email)->first();
+
+        if (! $user || ! password_verify($password, $user->password_hash)) {
+            return $this->fail('Credenciales inválidas', 401);
+        }
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return $this->respondUsuario($user, 201);
+    }
+
+    protected function logout(Request $request)
+    {
+        Auth::logout();
+
+        if ($request->session()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        return $this->ok(['mensaje' => 'Sesión cerrada']);
+    }
+
+    protected function respondUsuario(Usuario $user, int $code = 200)
+    {
+        $inscripciones = $this->inscripcionesDelUsuario($user->id);
+
+        $data = [
+            'id' => $user->id,
+            'nombre' => $user->nombre,
+            'email' => $user->email,
+            'telefono' => $user->telefono,
+            'direccion' => $user->direccion,
+            'universidad' => $user->universidad?->nombre,
+            'carrera' => $user->carrera?->nombre,
+            'universidad_id' => $user->universidad_id,
+            'carrera_id' => $user->carrera_id,
+            'modalidad' => $user->modalidad,
+            'terminos_aceptado_en' => $user->terminos_aceptado_en?->format('Y-m-d H:i:s'),
+            'creado_en' => $user->creado_en?->format('Y-m-d H:i:s'),
+            'trimestre_actual' => $this->academico->calcularTrimestre($inscripciones),
+        ];
+
+        return $this->ok($data, $code);
+    }
+
+    /**
+     * @return Inscripcion[] (con relación asignatura cargada)
+     */
+    protected function inscripcionesDelUsuario(int $usuarioId): array
+    {
+        return Inscripcion::where('usuario_id', $usuarioId)
+            ->with('asignatura')
+            ->get()
+            ->all();
+    }
+}
