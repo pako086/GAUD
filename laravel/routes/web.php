@@ -8,9 +8,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Middleware\AuthJson;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', '/index.html');
 
 Route::prefix('api')->group(function () {
     // Autenticación
