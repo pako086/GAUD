@@ -130,3 +130,23 @@ INSERT INTO asignaturas (codigo, nombre, creditos, trimestre, carrera_id) VALUES
 ('LAR-416', 'Labo. Robótica para Software Virtuales II', 1, 15, 1),
 ('ISW-417', 'Seminario de Proyectos de Software', 4, 15, 1),
 ('ISW-400', 'Curso Final de Grado', 6, 16, 1);
+
+-- Usuario demo (para pruebas de login)
+-- Email: estudiante@gaud.dev | Contraseña: Gaud2026!
+INSERT INTO usuarios (nombre, email, password_hash, telefono, direccion, universidad_id, carrera_id, modalidad, terminos_aceptado_en) VALUES
+('Estudiante Demo', 'estudiante@gaud.dev', '$2y$10$mfODqfAvynGk58DAFBWOgO5Idexrq2XGlp7BBX6EOqhnTo8hQULLu', '809-555-1234', 'Santo Domingo, RD', 1, 1, 'virtual', NOW());
+
+-- Inscripciones de ejemplo: T1-T2 aprobadas, T3 en curso
+INSERT INTO inscripciones (usuario_id, asignatura_id, estado, calificacion) VALUES
+(1, 1, 'aprobada', 'A'),
+(1, 2, 'aprobada', 'B'),
+(1, 3, 'aprobada', 'A'),
+(1, 4, 'aprobada', 'B'),
+(1, 5, 'aprobada', 'A'),
+(1, 6, 'aprobada', 'C'),
+(1, 7, 'aprobada', 'A'),
+(1, 8, 'aprobada', 'B'),
+(1, 9, 'en-curso', NULL),
+(1, 10, 'en-curso', NULL),
+(1, 11, 'en-curso', NULL),
+(1, 12, 'en-curso', NULL);
