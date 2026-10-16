@@ -15,7 +15,7 @@ class AuthController extends Controller
     }
 
     /**
-     * GET /api/auth.php → datos del usuario autenticado o 401.
+     * GET /api/auth.php -> datos del usuario autenticado o 401.
      */
     public function me()
     {
@@ -29,8 +29,8 @@ class AuthController extends Controller
     }
 
     /**
-     * POST /api/auth.php → login.
-     * POST /api/auth.php?action=logout → logout.
+     * POST /api/auth.php -> login.
+     * POST /api/auth.php?action=logout -> logout.
      */
     public function handlePost(Request $request)
     {
@@ -85,13 +85,20 @@ class AuthController extends Controller
     }
 
     /**
-     * @return Inscripcion[] (con relación asignatura cargada)
+     * @return array<int, array{trimestre:int, creditos:int, estado:?string, calificacion:?string}>
      */
     protected function inscripcionesDelUsuario(int $usuarioId): array
     {
         return Inscripcion::where('usuario_id', $usuarioId)
             ->with('asignatura')
             ->get()
+            ->map(fn ($i) => [
+                'trimestre' => (int) $i->asignatura->trimestre,
+                'creditos' => (int) $i->asignatura->creditos,
+                'estado' => $i->estado,
+                'calificacion' => $i->calificacion,
+            ])
+            ->values()
             ->all();
     }
 }
