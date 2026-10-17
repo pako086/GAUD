@@ -1,6 +1,6 @@
 const GAUD_Dashboard = (function () {
   const API = typeof window !== "undefined" ? window.GAUD_API : null;
-  const TOTAL_TRIMESTRES = 16;
+  const TOTAL_PERIODOS = 16;
 
   function elemento(id) {
     if (typeof document === "undefined") return null;
@@ -28,8 +28,8 @@ const GAUD_Dashboard = (function () {
     texto("aprobadas-dashboard", d.aprobadas);
     texto("en-curso-dashboard", d.en_curso);
     texto("pendientes-dashboard", d.pendientes);
-    texto("trimestre-actual-dashboard", d.trimestre_actual);
-    texto("trimestres-restantes-dashboard", Math.max(TOTAL_TRIMESTRES - (Number(d.trimestre_actual) || 0), 0));
+    texto("periodo-actual-dashboard", d.periodo_actual);
+    texto("periodos-restantes-dashboard", Math.max(TOTAL_PERIODOS - (Number(d.periodo_actual) || 0), 0));
   }
 
   function poblarRendimiento(d) {

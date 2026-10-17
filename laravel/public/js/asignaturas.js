@@ -6,6 +6,13 @@ const GAUD_Asignaturas = (function () {
   const LETRAS_CALIF = ["A", "B", "C"];
   const RANGOS_CALIF = { A: "A · 90-100", B: "B · 80-89", C: "C · 70-79" };
 
+  function etiquetaPeriodo(n) {
+    const u = typeof GAUD_DATA !== "undefined" ? GAUD_DATA.usuario : null;
+    const tipo = String((u && u.periodo) || "trimestres").toLowerCase();
+    const singular = tipo === "cuatrimestres" ? "Cuatrimestre" : tipo === "semestres" ? "Semestre" : "Trimestre";
+    return `${singular} ${n}`;
+  }
+
   const guardando = new Set();
   const pidiendo = new Set();
   const overridesColapso = new Map();
@@ -29,20 +36,223 @@ const GAUD_Asignaturas = (function () {
     return obtenerPensum().find(function (a) { return String(a.id) === String(id); });
   }
 
-  function revertir(a, anterior) {
-    a.estado = anterior.estado;
-    a.calificacion = anterior.calificacion;
-    if (typeof document !== "undefined") {
+  function companerosDe(a) {
+    return Array.isArray(a.companeros) ? a.companeros : [];
+  }
+
+  function prerrequisitosDe(a) {
+    return Array.isArray(a.prerrequisitos) ? a.prerrequisitos : [];
+  }
+
+  function grupoCorrequisitosLocal(a) {
+    const vistos = new Set();
+    const cola = [a];
+    const grupo = [];
+    while (cola.length) {
+      const x = cola.shift();
+      const id = String(x.id);
+      if (vistos.has(id)) continue;
+      vistos.add(id);
+      grupo.push(x);
+      companerosDe(x).forEach(function (c) {
+        const real = buscarPorId(c.id);
+        if (real && !vistos.has(String(real.id))) cola.push(real);
+      });
+    }
+    return grupo;
+  }
+
+  function sincronizarCompaneros() {
+    obtenerPensum().forEach(function (a) {
+      companerosDe(a).forEach(function (c) {
+        const real = buscarPorId(c.id);
+        if (real) c.estado = real.estado;
+      });
+      prerrequisitosDe(a).forEach(function (r) {
+        const real = buscarPorId(r.id);
+        if (real) r.estado = real.estado;
+      });
+    });
+  }
+
+  function esOptativa(a) {
+    return !!(a && a.tipo === "optativa");
+  }
+
+  function esSlot(a) {
+    return esOptativa(a) && Number(a.periodo) > 0;
+  }
+
+  function esPool(a) {
+    return esOptativa(a) && Number(a.periodo) === 0;
+  }
+
+  function optativaDeSlot(slot) {
+    if (!esSlot(slot)) return null;
+    return obtenerPensum().find(function (p) {
+      return esPool(p) && p.estado !== "pendiente" && Number(p.periodo_inscrito) === Number(slot.periodo);
+    }) || null;
+  }
+
+  function slotDeOptativa(p) {
+    if (!esPool(p) || p.periodo_inscrito === null || p.periodo_inscrito === undefined) return null;
+    return obtenerPensum().find(function (a) {
+      return esSlot(a) && Number(a.periodo) === Number(p.periodo_inscrito);
+    }) || null;
+  }
+
+  function datosDeSlot(a) {
+    return esSlot(a) ? optativaDeSlot(a) || a : a;
+  }
+
+  function bloqueosPrerrequisitos(a) {
+    const bloqueos = [];
+    const prereqs = prerrequisitosDe(a);
+    if (prereqs.length) {
+      prereqs.forEach(function (r) {
+        const real = buscarPorId(r.id);
+        const estadoRel = real ? real.estado : (r.estado || "pendiente");
+        if (estadoRel !== "aprobada") {
+          bloqueos.push({ tipo: "prerrequisito", codigo: r.codigo, nombre: r.nombre });
+        }
+      });
+    } else {
+      (a.bloqueos || []).forEach(function (b) {
+        if (b && b.tipo === "prerrequisito") bloqueos.push(b);
+      });
+    }
+    return bloqueos;
+  }
+
+  function bloqueosPara(a, estado) {
+    if (!a || estado === "pendiente" || estado === a.estado) return [];
+    const bloqueos = [];
+    const vistos = new Set();
+    const agregar = function (b) {
+      const clave = b.tipo + ":" + b.codigo;
+      if (vistos.has(clave)) return;
+      vistos.add(clave);
+      bloqueos.push(b);
+    };
+    const grupo = grupoCorrequisitosLocal(a);
+    grupo.forEach(function (g) {
+      bloqueosPrerrequisitos(g).forEach(agregar);
+    });
+    return bloqueos;
+  }
+
+  function esBloqueada(a) {
+    return a.estado === "pendiente" && bloqueosPara(a, "en-curso").length > 0;
+  }
+
+  function describirBloqueos(bloqueos) {
+    if (!bloqueos.length) return "";
+    const partes = bloqueos.map(function (b) {
+      return b.tipo === "correquisito" ? "correquisito " + b.codigo : "prerrequisito " + b.codigo;
+    });
+    return "Requiere: " + partes.join(", ");
+  }
+
+  function animarShake(el) {
+    if (!el) return;
+    el.classList.remove("shake");
+    void el.offsetWidth;
+    el.classList.add("shake");
+    setTimeout(function () { el.classList.remove("shake"); }, 550);
+  }
+
+  function actualizarFilaSlot(slot) {
+    const fila = document.querySelector(`.pensum-grid .course[data-id="${slot.id}"]`);
+    if (!fila) return;
+    actualizarFila(fila, datosDeSlot(slot));
+    const termEl = fila.closest(".term");
+    if (termEl)
+      sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.periodo)));
+  }
+
+  function actualizarUIAsignatura(a) {
+    if (typeof document === "undefined") return;
+    if (esPool(a)) {
+      const item = document.querySelector(`.pool-grid .pool-item[data-id="${a.id}"]`);
+      if (item) actualizarItemPool(item, a);
+      const slot = slotDeOptativa(a);
+      if (slot) actualizarFilaSlot(slot);
+    } else {
       const fila = document.querySelector(`.pensum-grid .course[data-id="${a.id}"]`);
       if (fila) {
-        actualizarFila(fila, a);
+        actualizarFila(fila, datosDeSlot(a));
         const termEl = fila.closest(".term");
         if (termEl)
-          sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.trimestre)));
+          sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.periodo)));
       }
     }
     renderCurrent(obtenerPensum().filter(function (x) { return x.estado === "en-curso"; }));
     aplicar();
+  }
+
+  function recalcularUI() {
+    if (typeof document === "undefined") return;
+    sincronizarCompaneros();
+    obtenerPensum().forEach(function (a) {
+      if (esPool(a)) {
+        const item = document.querySelector(`.pool-grid .pool-item[data-id="${a.id}"]`);
+        if (item) actualizarItemPool(item, a);
+        return;
+      }
+      const fila = document.querySelector(`.pensum-grid .course[data-id="${a.id}"]`);
+      if (fila) actualizarFila(fila, datosDeSlot(a));
+    });
+    document.querySelectorAll(".pensum-grid .term").forEach(function (termEl) {
+      sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.periodo)));
+    });
+    renderCurrent(obtenerPensum().filter(function (x) { return x.estado === "en-curso"; }));
+    aplicar();
+  }
+
+  function revertir(a, anterior) {
+    a.estado = anterior.estado;
+    a.calificacion = anterior.calificacion;
+    if (anterior.periodo_inscrito !== undefined) a.periodo_inscrito = anterior.periodo_inscrito;
+    recalcularUI();
+  }
+
+  function cerrarModal(overlay) {
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  function aplicarCambiosEstado(grupo, estado, principal) {
+    const main = principal || grupo[0];
+    const anteriores = new Map();
+    grupo.forEach(function (g) {
+      anteriores.set(String(g.id), snapshot(g));
+    });
+    const califPrincipal = LETRAS_CALIF.includes(main.calificacion) ? main.calificacion : null;
+    grupo.forEach(function (g) {
+      g.estado = estado;
+      if (estado === "aprobada") {
+        g.calificacion = g === main ? califPrincipal : (LETRAS_CALIF.includes(g.calificacion) ? g.calificacion : null);
+      } else {
+        g.calificacion = null;
+      }
+    });
+    recalcularUI();
+    if (grupo.length > 1) {
+      guardarGrupo(grupo, main, anteriores);
+    } else {
+      guardarCambios(main, anteriores.get(String(main.id)));
+    }
+  }
+
+  function cambiarCalificacion(a, letra) {
+    if (a.estado !== "aprobada") return;
+    const anterior = snapshot(a);
+    a.calificacion = a.calificacion === letra ? null : letra;
+    recalcularUI();
+    guardarCambios(a, anterior);
+  }
+
+  function snapshot(a) {
+    return { estado: a.estado, calificacion: a.calificacion, periodo_inscrito: a.periodo_inscrito };
   }
 
   async function guardarCambios(a, anterior) {
@@ -51,20 +261,96 @@ const GAUD_Asignaturas = (function () {
     if (guardando.has(clave)) return;
     guardando.add(clave);
     try {
-      const respuesta = await API.put("/asignaturas.php", {
+      const payload = {
         id: Number(a.id),
         estado: a.estado,
         calificacion: a.calificacion
-      });
+      };
+      if (esPool(a) && a.periodo_inscrito) payload.periodo = Number(a.periodo_inscrito);
+      const respuesta = await API.put("/asignaturas.php", payload);
       if (respuesta && typeof respuesta === "object") {
-        if (typeof respuesta.estado === "string") a.estado = respuesta.estado;
-        if (respuesta.calificacion !== undefined) a.calificacion = respuesta.calificacion;
+        if (Array.isArray(respuesta.grupo)) {
+          aplicarGrupoRespuesta([a], respuesta.grupo);
+        } else {
+          if (typeof respuesta.estado === "string") a.estado = respuesta.estado;
+          if (respuesta.calificacion !== undefined) a.calificacion = respuesta.calificacion;
+        }
+        if (Array.isArray(respuesta.afectados)) {
+          aplicarGrupoRespuesta(null, respuesta.afectados);
+        }
       }
     } catch (e) {
       revertir(a, anterior);
       window.alert((e && e.message) || "No se pudo guardar la asignatura.");
     } finally {
       guardando.delete(clave);
+    }
+  }
+
+  function aplicarGrupoRespuesta(grupo, lista) {
+    if (!Array.isArray(lista) || lista.length === 0) return;
+    const mapa = new Map();
+    lista.forEach(function (item) {
+      if (item && item.id !== undefined) mapa.set(String(item.id), item);
+    });
+    let cambio = false;
+    const objetivos = Array.isArray(grupo) && grupo.length > 0 ? grupo : obtenerPensum();
+    objetivos.forEach(function (g) {
+      const item = mapa.get(String(g.id));
+      if (!item) return;
+      if (item.estado !== g.estado) {
+        g.estado = item.estado;
+        cambio = true;
+      }
+      if (item.calificacion !== g.calificacion) {
+        g.calificacion = item.calificacion;
+        cambio = true;
+      }
+    });
+    if (cambio) recalcularUI();
+  }
+
+  async function guardarGrupo(grupo, principal, anteriores) {
+    if (!API || !principal.id) return;
+    const claves = grupo.map(function (g) { return String(g.id); });
+    if (claves.some(function (c) { return guardando.has(c); })) return;
+    claves.forEach(function (c) { guardando.add(c); });
+    try {
+      const payload = {
+        id: Number(principal.id),
+        estado: principal.estado,
+        calificacion: principal.calificacion,
+        con_correquisitos: true
+      };
+      if (esPool(principal) && principal.periodo_inscrito) payload.periodo = Number(principal.periodo_inscrito);
+      const respuesta = await API.put("/asignaturas.php", payload);
+      if (respuesta && typeof respuesta === "object") {
+        if (Array.isArray(respuesta.grupo)) {
+          aplicarGrupoRespuesta(grupo, respuesta.grupo);
+        } else {
+          const real = buscarPorId(principal.id);
+          if (real) {
+            if (typeof respuesta.estado === "string") real.estado = respuesta.estado;
+            if (respuesta.calificacion !== undefined) real.calificacion = respuesta.calificacion;
+            recalcularUI();
+          }
+        }
+        if (Array.isArray(respuesta.afectados)) {
+          aplicarGrupoRespuesta(null, respuesta.afectados);
+        }
+      }
+    } catch (e) {
+      grupo.forEach(function (g) {
+        const prev = anteriores.get(String(g.id));
+        if (!prev) return;
+        g.estado = prev.estado;
+        g.calificacion = prev.calificacion;
+        if (prev.periodo_inscrito !== undefined) g.periodo_inscrito = prev.periodo_inscrito;
+      });
+      recalcularUI();
+      window.alert((e && e.message) || "No se pudo guardar el grupo de asignaturas.");
+    } finally {
+      claves.forEach(function (c) { guardando.delete(c); });
     }
   }
 
@@ -80,11 +366,12 @@ const GAUD_Asignaturas = (function () {
   function clasesFila(a) {
     const base = "course status-" + claseEstado(a.estado);
     const calif = claseCalificacion(a);
-    return calif ? base + " " + calif : base;
+    const extra = [calif, esBloqueada(a) ? "bloqueada" : "", companerosDe(a).length > 0 ? "grupo-correquisito" : ""].filter(Boolean).join(" ");
+    return (base + " " + extra).trim();
   }
 
-  function asignaturasDePeriodo(pensum, trimestre) {
-    return pensum.filter(function (a) { return a.trimestre === trimestre; });
+  function asignaturasDePeriodo(pensum, periodo) {
+    return pensum.filter(function (a) { return a.periodo === periodo; });
   }
 
   function calcularCreditos(asignaturas) {
@@ -105,16 +392,16 @@ const GAUD_Asignaturas = (function () {
     });
   }
 
-  function colapsoEfectivo(trimestre, asigs) {
-    const ov = overridesColapso.get(trimestre);
+  function colapsoEfectivo(periodo, asigs) {
+    const ov = overridesColapso.get(periodo);
     return ov !== undefined ? ov : todasConCalificacion(asigs);
   }
 
-  function agruparPorTrimestre(pensum) {
+  function agruparPorPeriodo(pensum) {
     const mapa = new Map();
     pensum.forEach(function (a) {
-      if (!mapa.has(a.trimestre)) mapa.set(a.trimestre, []);
-      mapa.get(a.trimestre).push(a);
+      if (!mapa.has(a.periodo)) mapa.set(a.periodo, []);
+      mapa.get(a.periodo).push(a);
     });
     return new Map([...mapa.entries()].sort(function (x, y) { return x[0] - y[0]; }));
   }
@@ -166,8 +453,8 @@ const GAUD_Asignaturas = (function () {
     const badge = document.querySelector("#asignaturas-periodo") || document.querySelector(".period-badge");
     if (badge) {
       const u = typeof GAUD_DATA !== "undefined" ? GAUD_DATA.usuario : null;
-      const tri = u && u.trimestre_actual ? Number(u.trimestre_actual) : (asignaturas[0] ? Number(asignaturas[0].trimestre) : null);
-      badge.textContent = tri ? `Trimestre ${tri}` : "—";
+      const tri = u && u.periodo_actual ? Number(u.periodo_actual) : (asignaturas[0] ? Number(asignaturas[0].periodo_inscrito || asignaturas[0].periodo) : null);
+      badge.textContent = tri ? etiquetaPeriodo(tri) : "—";
     }
   }
 
@@ -191,17 +478,7 @@ const GAUD_Asignaturas = (function () {
       bub.setAttribute("aria-label", "Calificación " + letra);
       bub.addEventListener("click", function (e) {
         e.stopPropagation();
-        const fila = cell.closest(".course");
-        const anterior = { estado: a.estado, calificacion: a.calificacion };
-        a.calificacion = a.calificacion === letra ? null : letra;
-        if (fila) {
-          actualizarFila(fila, a);
-          const termEl = fila.closest(".term");
-          if (termEl)
-            sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.trimestre)));
-          aplicar();
-        }
-        guardarCambios(a, anterior);
+        cambiarCalificacion(a, letra);
       });
       row.appendChild(bub);
     });
@@ -230,8 +507,15 @@ const GAUD_Asignaturas = (function () {
   }
 
   function actualizarFila(fila, a) {
-    fila.className = clasesFila(a);
+    const oculto = fila.classList.contains("oculto");
+    fila.className = (clasesFila(a) + (oculto ? " oculto" : "")).trim();
     fila.dataset.estado = a.estado;
+    const lock = fila.querySelector(".lock-icon");
+    if (lock) {
+      const bloqueada = esBloqueada(a);
+      lock.hidden = !bloqueada;
+      lock.title = bloqueada ? describirBloqueos(bloqueosPara(a, "en-curso")) : "";
+    }
     const chip = fila.querySelector(".estado-chip");
     if (chip) {
       chip.className = "estado-chip st-" + claseEstado(a.estado);
@@ -295,10 +579,16 @@ const GAUD_Asignaturas = (function () {
     const chip = fila.querySelector(".estado-chip");
     if (!a || !chip) return;
     menuFila = fila;
+    const d = datosDeSlot(a);
     menuEl.querySelectorAll(".estado-opt").forEach(function (opt) {
-      const activa = opt.dataset.estado === a.estado;
+      const estadoOpt = opt.dataset.estado;
+      const activa = estadoOpt === d.estado;
+      const bloqueos = activa ? [] : bloqueosPara(a, estadoOpt);
       opt.classList.toggle("activo", activa);
+      opt.classList.toggle("deshabilitada", bloqueos.length > 0);
       opt.setAttribute("aria-checked", String(activa));
+      opt.setAttribute("aria-disabled", String(bloqueos.length > 0));
+      opt.title = bloqueos.length ? describirBloqueos(bloqueos) : "";
     });
     chip.setAttribute("aria-expanded", "true");
     menuEl.hidden = false;
@@ -330,17 +620,144 @@ const GAUD_Asignaturas = (function () {
     cerrarMenu();
     if (!fila) return;
     const a = buscarPorId(fila.dataset.id);
-    if (!a || a.estado === estado) return;
-    const anterior = { estado: a.estado, calificacion: a.calificacion };
-    a.estado = estado;
-    if (estado !== "aprobada") a.calificacion = null;
-    actualizarFila(fila, a);
-    const termEl = fila.closest(".term");
-    if (termEl)
-      sincronizarTerm(termEl, asignaturasDePeriodo(obtenerPensum(), Number(termEl.dataset.trimestre)));
-    renderCurrent(obtenerPensum().filter(function (x) { return x.estado === "en-curso"; }));
-    aplicar();
-    guardarCambios(a, anterior);
+    if (!a) return;
+    const d = datosDeSlot(a);
+    if (d.estado === estado) return;
+    const bloqueos = bloqueosPara(a, estado);
+    if (bloqueos.length) {
+      animarShake(fila);
+      return;
+    }
+    if (esSlot(a)) {
+      elegirEstadoSlot(a, estado);
+      return;
+    }
+    aplicarCambiosEstado(grupoCorrequisitosLocal(a), estado, a);
+  }
+
+  function elegirEstadoSlot(a, estado) {
+    const opt = optativaDeSlot(a);
+    if (estado === "pendiente") {
+      if (opt) {
+        const anterior = snapshot(opt);
+        opt.estado = "pendiente";
+        opt.calificacion = null;
+        opt.periodo_inscrito = null;
+        recalcularUI();
+        guardarCambios(opt, anterior);
+      }
+      return;
+    }
+    if (opt) {
+      const anterior = snapshot(opt);
+      opt.estado = estado;
+      if (estado !== "aprobada") opt.calificacion = null;
+      recalcularUI();
+      guardarCambios(opt, anterior);
+      return;
+    }
+    abrirModalOptativas(a, estado);
+  }
+
+  function abrirModalOptativas(slot, estado) {
+    const overlay = document.createElement("div");
+    overlay.className = "overlay";
+    const cont = document.createElement("div");
+    cont.className = "contenidoT modal";
+    cont.setAttribute("role", "dialog");
+    cont.setAttribute("aria-modal", "true");
+    const h2 = document.createElement("h2");
+    h2.textContent = "Elegir optativa";
+    const p = document.createElement("p");
+    p.textContent = "Selecciona la optativa para " + etiquetaPeriodo(Number(slot.periodo)) + ".";
+    const lista = document.createElement("div");
+    lista.className = "pool-lista";
+    const pools = obtenerPensum().filter(function (x) { return esPool(x); })
+      .sort(function (x, y) { return String(x.codigo).localeCompare(String(y.codigo)); });
+    if (!pools.length) {
+      const vacio = document.createElement("p");
+      vacio.textContent = "No hay optativas disponibles.";
+      lista.appendChild(vacio);
+    }
+    pools.forEach(function (x) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const ocupada = x.periodo_inscrito !== null && x.periodo_inscrito !== undefined;
+      btn.className = "pool-opt" + (ocupada ? " ocupada" : "");
+      btn.textContent = `${x.codigo} · ${x.nombre} (${x.creditos} cr)`;
+      if (ocupada) btn.title = "Inscrita en " + etiquetaPeriodo(Number(x.periodo_inscrito));
+      btn.addEventListener("click", function () { confirmarOptativa(overlay, slot, estado, x); });
+      lista.appendChild(btn);
+    });
+    const btns = document.createElement("div");
+    btns.className = "button-container";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn btn-outline";
+    cancel.textContent = "Cancelar";
+    cancel.addEventListener("click", function () { cerrarModal(overlay); });
+    btns.appendChild(cancel);
+    cont.appendChild(h2);
+    cont.appendChild(p);
+    cont.appendChild(lista);
+    cont.appendChild(btns);
+    overlay.appendChild(cont);
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) cerrarModal(overlay);
+    });
+    document.body.appendChild(overlay);
+  }
+
+  function confirmarOptativa(overlay, slot, estado, pool) {
+    cerrarModal(overlay);
+    const anterior = snapshot(pool);
+    pool.estado = estado;
+    pool.calificacion = null;
+    pool.periodo_inscrito = Number(slot.periodo);
+    recalcularUI();
+    guardarCambios(pool, anterior);
+  }
+
+  function renderPool(pensum) {
+    if (typeof document === "undefined") return;
+    const cont = document.querySelector(".pool-grid");
+    if (!cont) return;
+    cont.innerHTML = "";
+    const pools = pensum.filter(function (a) { return esPool(a); })
+      .sort(function (x, y) { return String(x.codigo).localeCompare(String(y.codigo)); });
+    pools.forEach(function (p) {
+      const item = document.createElement("div");
+      item.className = "pool-item";
+      item.dataset.id = String(p.id);
+      const code = document.createElement("span");
+      code.className = "pool-code";
+      code.textContent = p.codigo;
+      const name = document.createElement("span");
+      name.className = "pool-name";
+      name.textContent = p.nombre;
+      const credits = document.createElement("span");
+      credits.className = "pool-credits";
+      credits.textContent = `${p.creditos} cr`;
+      const periodo = document.createElement("span");
+      periodo.className = "pool-periodo";
+      item.appendChild(code);
+      item.appendChild(name);
+      item.appendChild(credits);
+      item.appendChild(periodo);
+      cont.appendChild(item);
+      actualizarItemPool(item, p);
+    });
+  }
+
+  function actualizarItemPool(item, p) {
+    const oculto = item.classList.contains("oculto");
+    item.className = "pool-item st-" + claseEstado(p.estado) + (oculto ? " oculto" : "");
+    const periodo = item.querySelector(".pool-periodo");
+    if (periodo) {
+      const slot = slotDeOptativa(p);
+      periodo.textContent = slot ? etiquetaPeriodo(Number(slot.periodo)) : "";
+      periodo.hidden = !slot;
+    }
   }
 
   function renderPensum(pensum) {
@@ -348,10 +765,11 @@ const GAUD_Asignaturas = (function () {
     const cont = document.querySelector(".pensum-grid");
     if (!cont) return;
     cont.innerHTML = "";
-    agruparPorTrimestre(pensum).forEach(function (asigs, tri) {
+    const grid = pensum.filter(function (a) { return !esPool(a); });
+    agruparPorPeriodo(grid).forEach(function (asigs, tri) {
       const term = document.createElement("table");
       term.className = "term";
-      term.dataset.trimestre = tri;
+      term.dataset.periodo = tri;
 
       const head = document.createElement("thead");
       head.className = "term-head";
@@ -362,7 +780,7 @@ const GAUD_Asignaturas = (function () {
       const thMain = document.createElement("th");
       const num = document.createElement("span");
       num.className = "term-num";
-      num.textContent = `Trimestre ${tri}`;
+      num.textContent = etiquetaPeriodo(tri);
       const progress = document.createElement("span");
       progress.className = "term-progress";
       thMain.appendChild(num);
@@ -384,30 +802,42 @@ const GAUD_Asignaturas = (function () {
       const body = document.createElement("tbody");
       body.className = "term-body";
       asigs.forEach(function (a) {
+        const d = datosDeSlot(a);
         const fila = document.createElement("tr");
-        fila.className = clasesFila(a);
+        fila.className = clasesFila(d);
         fila.dataset.id = String(a.id);
-        fila.dataset.codigo = a.codigo;
-        fila.dataset.estado = a.estado;
+        fila.dataset.codigo = d.codigo;
+        fila.dataset.estado = d.estado;
         const tdMain = document.createElement("td");
         tdMain.className = "course-main";
         const name = document.createElement("div");
         name.className = "course-name";
-        name.textContent = a.nombre;
+        name.textContent = d.nombre;
         const code = document.createElement("div");
         code.className = "course-code";
-        code.textContent = a.codigo;
+        code.textContent = d.codigo;
         tdMain.appendChild(name);
         tdMain.appendChild(code);
         const tdCredits = document.createElement("td");
         tdCredits.className = "course-credits";
-        tdCredits.textContent = `${a.creditos} cr`;
+        tdCredits.textContent = `${d.creditos} cr`;
         const tdEstado = document.createElement("td");
         tdEstado.className = "course-estado";
-        tdEstado.appendChild(crearChip(a));
+        const lock = document.createElement("img");
+        lock.className = "lock-icon";
+        lock.src = "icon/lock.png";
+        lock.alt = "";
+        lock.hidden = !esBloqueada(d);
+        lock.title = esBloqueada(d) ? describirBloqueos(bloqueosPara(d, "en-curso")) : "";
+        const chip = crearChip(d);
+        const estadoWrap = document.createElement("span");
+        estadoWrap.className = "estado-lock";
+        estadoWrap.appendChild(chip);
+        estadoWrap.appendChild(lock);
+        tdEstado.appendChild(estadoWrap);
         const tdCalif = document.createElement("td");
         tdCalif.className = "course-calif";
-        renderCalif(a, tdCalif);
+        renderCalif(d, tdCalif);
         fila.appendChild(tdMain);
         fila.appendChild(tdCredits);
         fila.appendChild(tdEstado);
@@ -429,7 +859,7 @@ const GAUD_Asignaturas = (function () {
 
   function sincronizarTerm(termEl, asigs, forzarExpandido) {
     actualizarCabecera(termEl, asigs);
-    const tri = Number(termEl.dataset.trimestre);
+    const tri = Number(termEl.dataset.periodo);
     const colapsado = forzarExpandido ? false : colapsoEfectivo(tri, asigs);
     termEl.classList.toggle("term-collapsed", colapsado);
     termEl.classList.toggle("term-current", asigs.some(function (a) { return a.estado === "en-curso"; }));
@@ -438,7 +868,7 @@ const GAUD_Asignaturas = (function () {
   }
 
   function alternarTerm(termEl) {
-    const tri = Number(termEl.dataset.trimestre);
+    const tri = Number(termEl.dataset.periodo);
     const data = typeof GAUD_DATA !== "undefined" ? GAUD_DATA.pensum : [];
     const asigs = asignaturasDePeriodo(data, tri);
     if (!asigs.length) return;
@@ -472,10 +902,18 @@ const GAUD_Asignaturas = (function () {
       const visible = t.querySelector(".course:not(.oculto)") !== null;
       t.classList.toggle("oculto", !visible);
     });
+    document.querySelectorAll(".pool-grid .pool-item").forEach(function (c) {
+      c.classList.toggle("oculto", !visibles.has(c.dataset.id));
+    });
+    const poolSection = document.querySelector(".pool-section");
+    if (poolSection) {
+      const poolVisible = document.querySelector(".pool-grid .pool-item:not(.oculto)") !== null;
+      poolSection.classList.toggle("oculto", !poolVisible);
+    }
     const filtrando = String(busqueda || "").trim() !== "" || estado !== "todas";
     document.querySelectorAll(".pensum-grid .term").forEach(function (t) {
       if (t.classList.contains("oculto")) return;
-      const asigs = data.filter(function (a) { return a.trimestre === Number(t.dataset.trimestre); });
+      const asigs = data.filter(function (a) { return a.periodo === Number(t.dataset.periodo); });
       if (!asigs.length) return;
       sincronizarTerm(t, asigs, filtrando);
     });
@@ -503,6 +941,11 @@ const GAUD_Asignaturas = (function () {
       const fila = e.target.closest(".course");
       if (!fila || e.target.closest(".course-calif")) return;
       e.stopPropagation();
+      const a = buscarPorId(fila.dataset.id);
+      if (a && esBloqueada(datosDeSlot(a))) {
+        animarShake(fila);
+        return;
+      }
       if (menuEl && !menuEl.hidden && menuFila === fila) {
         cerrarMenu();
       } else {
@@ -540,6 +983,7 @@ const GAUD_Asignaturas = (function () {
     const pensum = obtenerPensum();
     renderCurrent(pensum.filter(function (a) { return a.estado === "en-curso"; }));
     renderPensum(pensum);
+    renderPool(pensum);
     enlazarGrid();
     enlazarHerramientas();
     aplicar();
@@ -588,7 +1032,30 @@ const GAUD_Asignaturas = (function () {
     normalizar,
     obtenerPensum,
     buscarPorId,
+    companerosDe,
+    grupoCorrequisitosLocal,
+    prerrequisitosDe,
+    sincronizarCompaneros,
+    bloqueosPrerrequisitos,
+    recalcularUI,
+    esOptativa,
+    esSlot,
+    esPool,
+    optativaDeSlot,
+    slotDeOptativa,
+    datosDeSlot,
+    bloqueosPara,
+    esBloqueada,
+    describirBloqueos,
+    animarShake,
+    actualizarUIAsignatura,
+    revertir,
+    cerrarModal,
+    aplicarCambiosEstado,
+    cambiarCalificacion,
     guardarCambios,
+    aplicarGrupoRespuesta,
+    guardarGrupo,
     claseEstado,
     claseCalificacion,
     clasesFila,
@@ -598,7 +1065,7 @@ const GAUD_Asignaturas = (function () {
     todasAprobadas,
     todasConCalificacion,
     colapsoEfectivo,
-    agruparPorTrimestre,
+    agruparPorPeriodo,
     coincideBusqueda,
     coincideEstado,
     filtrarPensum,

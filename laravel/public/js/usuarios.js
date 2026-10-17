@@ -29,11 +29,18 @@ global.GAUD_DATA = global.GAUD_DATA || {
     return mapa[num] || num + "º";
   }
 
+  function etiquetaPeriodoTipo(tipo) {
+    const t = String(tipo || "trimestres").toLowerCase();
+    if (t === "cuatrimestres") return "Cuatrimestre";
+    if (t === "semestres") return "Semestre";
+    return "Trimestre";
+  }
+
   function periodoDelUsuario(u) {
     if (!u) return { nombre: "—", rango: "—", anio: new Date().getFullYear() };
-    const num = Number(u.trimestre_actual) || 1;
+    const num = Number(u.periodo_actual) || 1;
     return {
-      nombre: ordinal(num) + " Trimestre",
+      nombre: ordinal(num) + " " + etiquetaPeriodoTipo(u.periodo),
       rango: "—",
       anio: new Date().getFullYear()
     };
