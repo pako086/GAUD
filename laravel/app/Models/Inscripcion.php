@@ -13,6 +13,7 @@ class Inscripcion extends Model
     protected $fillable = [
         'usuario_id',
         'asignatura_id',
+        'periodo',
         'estado',
         'calificacion',
     ];
@@ -20,6 +21,7 @@ class Inscripcion extends Model
     protected function casts(): array
     {
         return [
+            'periodo' => 'integer',
             'actualizado_en' => 'datetime',
         ];
     }

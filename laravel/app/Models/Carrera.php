@@ -13,6 +13,7 @@ class Carrera extends Model
     protected $fillable = [
         'universidad_id',
         'nombre',
+        'periodo',
     ];
 
     public function universidad()

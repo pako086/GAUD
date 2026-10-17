@@ -14,7 +14,8 @@ class Asignatura extends Model
         'codigo',
         'nombre',
         'creditos',
-        'trimestre',
+        'periodo',
+        'tipo',
         'carrera_id',
     ];
 
@@ -22,7 +23,7 @@ class Asignatura extends Model
     {
         return [
             'creditos' => 'integer',
-            'trimestre' => 'integer',
+            'periodo' => 'integer',
         ];
     }
 
@@ -34,5 +35,17 @@ class Asignatura extends Model
     public function inscripciones()
     {
         return $this->hasMany(Inscripcion::class);
+    }
+
+    public function prerrequisitos()
+    {
+        return $this->belongsToMany(Asignatura::class, 'asignatura_relaciones', 'asignatura_id', 'relacionada_id')
+            ->wherePivot('tipo', 'prerrequisito');
+    }
+
+    public function correquisitos()
+    {
+        return $this->belongsToMany(Asignatura::class, 'asignatura_relaciones', 'asignatura_id', 'relacionada_id')
+            ->wherePivot('tipo', 'correquisito');
     }
 }
