@@ -124,12 +124,40 @@ const GAUD_Asignaturas = (function () {
     return bloqueos;
   }
 
+  function esFinalDeGrado(a) {
+    return !!(a && a.nombre === "Curso Final de Grado");
+  }
+
+  function bloqueosFinalDeGrado(a) {
+    let obligatoriasPendientes = 0;
+    let optativasRequeridas = 0;
+    let optativasAprobadas = 0;
+    obtenerPensum().forEach(function (x) {
+      if (x.tipo === "optativa") {
+        if (Number(x.periodo) > 0) optativasRequeridas++;
+        if (x.estado === "aprobada") optativasAprobadas++;
+      } else if (x.tipo === "obligatoria" && String(x.id) !== String(a.id) && x.estado !== "aprobada") {
+        obligatoriasPendientes++;
+      }
+    });
+    const faltanOptativas = Math.max(0, optativasRequeridas - optativasAprobadas);
+    if (obligatoriasPendientes === 0 && faltanOptativas === 0) return [];
+    const partes = [];
+    if (obligatoriasPendientes > 0) {
+      partes.push(obligatoriasPendientes + " obligatorias por aprobar");
+    }
+    if (faltanOptativas > 0) {
+      partes.push(faltanOptativas + " optativas por aprobar");
+    }
+    return [{ tipo: "final-grado", codigo: a.codigo, nombre: "Faltan " + partes.join(" y ") }];
+  }
+
   function bloqueosPara(a, estado) {
     if (!a || estado === "pendiente" || estado === a.estado) return [];
     const bloqueos = [];
     const vistos = new Set();
     const agregar = function (b) {
-      const clave = b.tipo + ":" + b.codigo;
+      const clave = b.tipo + ":" + b.codigo + ":" + (b.nombre || "");
       if (vistos.has(clave)) return;
       vistos.add(clave);
       bloqueos.push(b);
@@ -138,6 +166,7 @@ const GAUD_Asignaturas = (function () {
     grupo.forEach(function (g) {
       bloqueosPrerrequisitos(g).forEach(agregar);
     });
+    if (esFinalDeGrado(a)) bloqueosFinalDeGrado(a).forEach(agregar);
     return bloqueos;
   }
 
@@ -148,6 +177,7 @@ const GAUD_Asignaturas = (function () {
   function describirBloqueos(bloqueos) {
     if (!bloqueos.length) return "";
     const partes = bloqueos.map(function (b) {
+      if (b.tipo === "final-grado") return b.nombre;
       return b.tipo === "correquisito" ? "correquisito " + b.codigo : "prerrequisito " + b.codigo;
     });
     return "Requiere: " + partes.join(", ");
@@ -1037,6 +1067,8 @@ const GAUD_Asignaturas = (function () {
     prerrequisitosDe,
     sincronizarCompaneros,
     bloqueosPrerrequisitos,
+    esFinalDeGrado,
+    bloqueosFinalDeGrado,
     recalcularUI,
     esOptativa,
     esSlot,

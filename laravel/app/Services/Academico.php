@@ -16,9 +16,6 @@ class Academico
      * Reglas:
      * - Prerrequisito: debe estar 'aprobada'.
      * - Correquisito (se cursan siempre juntas):
-     *   - destino 'en-curso': el socio debe estar en {pendiente, en-curso}.
-     *   - destino 'aprobada': el socio debe estar en {en-curso, aprobada}.
-     *   - destino 'pendiente': sin bloqueos (la cascada la maneja el cliente).
      *
      * Para transiciones de grupo completo de correquisitos, usar bloqueosGrupo().
      *
@@ -49,7 +46,75 @@ class Academico
             }
         }
 
+        if ($this->esFinalDeGrado($asignatura)) {
+            $bloqueos = array_merge($bloqueos, $this->bloqueosFinalDeGrado($asignatura, $inscPorAsignaturaId));
+        }
+
         return $bloqueos;
+    }
+
+    public const NOMBRE_FINAL_DE_GRADO = 'Curso Final de Grado';
+
+    public function esFinalDeGrado(Asignatura $asignatura): bool
+    {
+        return trim((string) $asignatura->nombre) === self::NOMBRE_FINAL_DE_GRADO;
+    }
+
+    /**
+     * Bloqueos específicos del "Curso Final de Grado".
+     *
+     * Solo se puede inscribir cuando:
+     * - Todas las demás obligatorias de la carrera estén 'aprobada'.
+     * - Estén aprobadas las optativas que lleva el pensum (número de slots de
+     *   optativa, i.e. asignaturas optativas con periodo > 0).
+     *
+     * Devuelve un único bloqueo de tipo 'final-grado' con el resumen de lo que falta.
+     */
+    public function bloqueosFinalDeGrado(Asignatura $asignatura, array $inscPorAsignaturaId): array
+    {
+        $obligatoriasPendientes = 0;
+        $optativasRequeridas = 0;
+        $optativasAprobadas = 0;
+
+        foreach (Asignatura::where('carrera_id', $asignatura->carrera_id)->get() as $a) {
+            $estado = $inscPorAsignaturaId[$a->id]['estado'] ?? null;
+
+            if ($a->tipo === 'optativa') {
+                if ((int) $a->periodo > 0) {
+                    $optativasRequeridas++;
+                }
+                if ($estado === 'aprobada') {
+                    $optativasAprobadas++;
+                }
+                continue;
+            }
+
+            if ($a->tipo === 'obligatoria'
+                && (int) $a->id !== (int) $asignatura->id
+                && $estado !== 'aprobada'
+            ) {
+                $obligatoriasPendientes++;
+            }
+        }
+
+        $faltanOptativas = max(0, $optativasRequeridas - $optativasAprobadas);
+        if ($obligatoriasPendientes === 0 && $faltanOptativas === 0) {
+            return [];
+        }
+
+        $partes = [];
+        if ($obligatoriasPendientes > 0) {
+            $partes[] = "{$obligatoriasPendientes} obligatorias por aprobar";
+        }
+        if ($faltanOptativas > 0) {
+            $partes[] = "{$faltanOptativas} optativas por aprobar";
+        }
+
+        return [[
+            'tipo' => 'final-grado',
+            'codigo' => $asignatura->codigo,
+            'nombre' => 'Faltan ' . implode(' y ', $partes),
+        ]];
     }
 
     public function grupoCorrequisitos(Asignatura $asignatura): array
@@ -211,6 +276,31 @@ class Academico
             }
         }
 
+        $final = Asignatura::where('carrera_id', (int) $asignaturasCambiadas[0]->carrera_id)
+            ->where('nombre', self::NOMBRE_FINAL_DE_GRADO)
+            ->first();
+
+        if ($final) {
+            $estadoFinal = $inscPorId[$final->id]['estado'] ?? 'pendiente';
+            if (in_array($estadoFinal, ['en-curso', 'aprobada'], true)
+                && $this->bloqueosFinalDeGrado($final, $inscPorId) !== []
+            ) {
+                DB::table('inscripciones')
+                    ->where('usuario_id', $usuarioId)
+                    ->where('asignatura_id', $final->id)
+                    ->delete();
+
+                $inscPorId[$final->id] = ['estado' => 'pendiente', 'calificacion' => null];
+                $afectados[] = [
+                    'id' => (int) $final->id,
+                    'codigo' => $final->codigo,
+                    'nombre' => $final->nombre,
+                    'estado' => 'pendiente',
+                    'calificacion' => null,
+                ];
+            }
+        }
+
         return $afectados;
     }
 
@@ -245,6 +335,10 @@ class Academico
     {
         $partes = [];
         foreach ($bloqueos as $b) {
+            if ($b['tipo'] === 'final-grado') {
+                $partes[] = $b['nombre'];
+                continue;
+            }
             $tipo = $b['tipo'] === 'prerrequisito' ? 'Prerrequisito' : 'Correquisito';
             $partes[] = "{$tipo} no cumplido: {$b['codigo']} {$b['nombre']}";
         }
