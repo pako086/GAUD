@@ -6,14 +6,14 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Asignaturas — GAUD</title>
 <link href="icon/icon-web.png" rel="icon" type="image/png"/>
-<link href="css/styles.css?v=6" rel="stylesheet"/>
+<link href="css/styles.css?v=12" rel="stylesheet"/>
 <script defer="" src="js/api.js"></script>
-<script defer="" src="js/usuarios.js"></script>
+<script defer="" src="js/usuarios.js?v=2"></script>
 <script defer="" src="js/guardas.js"></script>
 <script defer="" src="js/fechas.js?v=1"></script>
 <script defer="" src="js/header.js?v=3"></script>
 <script defer="" src="js/logo.js"></script>
-<script defer="" src="js/asignaturas.js?v=4"></script>
+<script defer="" src="js/asignaturas.js?v=13"></script>
 </head>
 <body data-pagina="asignaturas">
 <div class="app-layout">
@@ -76,16 +76,17 @@
 <div class="pensum-header">
 <div>
 <p class="eyebrow">Pensum completo</p>
-<h2>Grid de Asignaturas por Trimestre</h2>
+<h2>Grid de Asignaturas por Período</h2>
 </div>
 <div class="pensum-meta">
-<div><strong>225</strong> créditos · <strong>16</strong> trimestres</div>
+<div><strong>225</strong> créditos · <strong>16</strong> períodos</div>
 </div>
 </div>
           <div class="legend legend-calif">
             <span class="legend-calif-item"><i class="bub-mini bub-mini-A">A</i> 90-100</span>
             <span class="legend-calif-item"><i class="bub-mini bub-mini-B">B</i> 80-89</span>
             <span class="legend-calif-item"><i class="bub-mini bub-mini-C">C</i> 70-79</span>
+            <span class="legend-calif-item"><i class="correquisito-swatch"></i> Correquisito</span>
           </div>
 <div class="pensum-tools">
 <div class="pensum-search">
@@ -101,6 +102,14 @@
 </div>
 <div class="pensum-scroll">
 <div class="pensum-grid"></div>
+</div>
+<!-- ===== OPTATIVAS ===== -->
+<div class="pool-section">
+<div class="pool-header">
+<p class="eyebrow">Optativas</p>
+<h2>Optativas Propias y Certificaciones</h2>
+</div>
+<div class="pool-grid"></div>
 </div>
 </div>
 </main>
