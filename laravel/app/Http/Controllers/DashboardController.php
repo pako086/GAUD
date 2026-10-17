@@ -14,14 +14,14 @@ class DashboardController extends Controller
     }
 
     /**
-     * GET /api/dashboard.php → resumen académico del usuario autenticado.
+     * GET /api/dashboard.php -> resumen académico del usuario autenticado.
      */
     public function index()
     {
         $user = Auth::user();
 
         $asignaturas = Asignatura::where('carrera_id', $user->carrera_id)
-            ->orderBy('trimestre')
+            ->orderBy('periodo')
             ->orderBy('id')
             ->get();
 
@@ -29,7 +29,17 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('asignatura_id');
 
-        $total = $asignaturas->count();
+        $asignaturaPorId = $asignaturas->keyBy('id');
+
+        $poolPorPeriodo = [];
+        foreach ($inscripciones as $i) {
+            $a = $asignaturaPorId->get($i->asignatura_id);
+            if ($a && (int) $a->periodo === 0) {
+                $poolPorPeriodo[(int) $i->periodo] = ['asignatura' => $a, 'inscripcion' => $i];
+            }
+        }
+
+        $total = 0;
         $aprobadas = 0;
         $enCurso = 0;
         $pendientes = 0;
@@ -39,15 +49,30 @@ class DashboardController extends Controller
         $inscripcionesData = [];
 
         foreach ($asignaturas as $a) {
-            $totalCreditos += $a->creditos;
+            if ((int) $a->periodo === 0) {
+                continue;
+            }
 
             $insc = $inscripciones->get($a->id);
             $estado = $insc?->estado ?? 'pendiente';
             $calificacion = $insc?->calificacion;
+            $creditos = (int) $a->creditos;
+            $periodo = (int) $a->periodo;
+
+            if ($insc === null && $a->tipo === 'optativa' && isset($poolPorPeriodo[$periodo])) {
+                $fill = $poolPorPeriodo[$periodo];
+                $estado = $fill['inscripcion']->estado;
+                $calificacion = $fill['inscripcion']->calificacion;
+                $creditos = (int) $fill['asignatura']->creditos;
+                $periodo = (int) $fill['inscripcion']->periodo;
+            }
+
+            $total++;
+            $totalCreditos += $creditos;
 
             if ($estado === 'aprobada') {
                 $aprobadas++;
-                $creditosGanados += $a->creditos;
+                $creditosGanados += $creditos;
             } elseif ($estado === 'en-curso') {
                 $enCurso++;
             } else {
@@ -59,8 +84,8 @@ class DashboardController extends Controller
             }
 
             $inscripcionesData[] = [
-                'trimestre' => (int) $a->trimestre,
-                'creditos' => (int) $a->creditos,
+                'periodo' => $periodo,
+                'creditos' => $creditos,
                 'estado' => $estado,
                 'calificacion' => $calificacion,
             ];
@@ -76,7 +101,7 @@ class DashboardController extends Controller
             'total_creditos' => $totalCreditos,
             'creditos_ganados' => $creditosGanados,
             'progreso' => $progreso,
-            'trimestre_actual' => $this->academico->calcularTrimestre($inscripcionesData),
+            'periodo_actual' => $this->academico->calcularPeriodo($inscripcionesData),
             'indice_academico' => $this->academico->calcularIndiceAcademico($inscripcionesData),
             'distribucion' => $distribucion,
         ]);

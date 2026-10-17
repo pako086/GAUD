@@ -79,13 +79,13 @@ class AuthController extends Controller
         $inscripciones = $this->inscripcionesDelUsuario($user->id);
 
         $data = $this->perfilBase($user);
-        $data['trimestre_actual'] = $this->academico->calcularTrimestre($inscripciones);
+        $data['periodo_actual'] = $this->academico->calcularPeriodo($inscripciones);
 
         return $this->ok($data, $code);
     }
 
     /**
-     * @return array<int, array{trimestre:int, creditos:int, estado:?string, calificacion:?string}>
+     * @return array<int, array{periodo:int, creditos:int, estado:?string, calificacion:?string}>
      */
     protected function inscripcionesDelUsuario(int $usuarioId): array
     {
@@ -93,7 +93,7 @@ class AuthController extends Controller
             ->with('asignatura')
             ->get()
             ->map(fn ($i) => [
-                'trimestre' => (int) $i->asignatura->trimestre,
+                'periodo' => (int) $i->asignatura->periodo,
                 'creditos' => (int) $i->asignatura->creditos,
                 'estado' => $i->estado,
                 'calificacion' => $i->calificacion,

@@ -8,7 +8,7 @@ use App\Models\Universidad;
 class CatalogoController extends Controller
 {
     /**
-     * GET /api/catalogo.php → universidades con sus carreras (público).
+     * GET /api/catalogo.php -> universidades con sus carreras.
      */
     public function index()
     {

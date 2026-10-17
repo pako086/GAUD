@@ -27,6 +27,7 @@ abstract class Controller
             'direccion' => $user->direccion,
             'universidad' => $user->universidad?->nombre,
             'carrera' => $user->carrera?->nombre,
+            'periodo' => $user->carrera?->periodo,
             'universidad_id' => $user->universidad_id,
             'carrera_id' => $user->carrera_id,
             'modalidad' => $user->modalidad,
