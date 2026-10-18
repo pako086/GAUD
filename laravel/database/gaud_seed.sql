@@ -1648,7 +1648,7 @@ INSERT INTO asignaturas (carrera_id, codigo, nombre, creditos, periodo, tipo) VA
 ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), creditos = VALUES(creditos), periodo = VALUES(periodo), tipo = VALUES(tipo);
 
 INSERT INTO usuarios (nombre, email, password_hash, telefono, direccion, universidad_id, carrera_id, modalidad, terminos_aceptado_en)
-VALUES ('Estudiante Demo', 'estudiante@gaud.dev', '$2y$10$mfODqfAvynGk58DAFBWOgO5Idexrq2XGlp7BBX6EOqhnTo8hQULLu', '809-555-1234', 'Santo Domingo, RD', @uni_id, @carrera_isw_id, 'virtual', NOW())
+VALUES ('Estudiante Demo', 'estudiante@gaud.dev', 'Gaud2026!', '809-555-1234', 'Santo Domingo, RD', @uni_id, @carrera_isw_id, 'virtual', NOW())
 ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), password_hash = VALUES(password_hash), telefono = VALUES(telefono), direccion = VALUES(direccion), universidad_id = VALUES(universidad_id), carrera_id = VALUES(carrera_id), modalidad = VALUES(modalidad);
 
 SET @usuario_id = (SELECT id FROM usuarios WHERE email = 'estudiante@gaud.dev');
