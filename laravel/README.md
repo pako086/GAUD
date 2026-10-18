@@ -159,8 +159,6 @@ La base de datos se importa en tres pasos, en este orden:
 2. `gaud_seed.sql`: inserta los datos de prueba (universidad, carreras, asignaturas, usuario demo e inscripciones).
 3. `uapa_prerrequisitos_correquisitos.sql`: inserta las relaciones de prerrequisitos y correquisitos.
 
-También existe `gaud.sql`, un dump todo-en-uno con el esquema, los datos de prueba y las relaciones, si prefieres importar un solo archivo.
-
 #### Opción A: usando phpMyAdmin
 
 1. Inicia MySQL en XAMPP.
