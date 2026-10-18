@@ -15,8 +15,10 @@ La aplicación permite:
 - Eliminar la cuenta.
 - Visualizar un dashboard académico con progreso, créditos, índice académico y distribución de calificaciones.
 - Consultar las asignaturas del plan de estudios.
-- Actualizar el estado de cada asignatura: `pendiente`, `en-curso` o `aprobada`.
+- Visualizar los prerrequisitos y correquisitos de cada asignatura.
+- Actualizar el estado de cada asignatura: `pendiente`, `en-curso` o `aprobada`, con verificación de prerrequisitos y correquisitos.
 - Registrar calificaciones `A`, `B` o `C` cuando la asignatura está aprobada.
+- Inscribir o aprobar un grupo de correquisitos de forma conjunta.
 - Consultar un catálogo público de universidades y carreras.
 
 El proyecto se construyó de manera progresiva durante el trimestre:
@@ -80,7 +82,9 @@ GAUD/
     │   └── Services/
     ├── bootstrap/
     ├── database/
-    │   └── gaud.sql
+    │   ├── gaud_schema.sql
+    │   ├── gaud_seed.sql
+    │   └── uapa_prerrequisitos_correquisitos.sql
     ├── public/
     │   ├── css/
     │   ├── icon/
@@ -101,8 +105,11 @@ Notas importantes:
 
 - La aplicación Laravel está dentro de `laravel/`.
 - El frontend estático está en `laravel/public/`.
-- El script de base de datos está en `laravel/database/gaud.sql`.
-- El proyecto **no usa migrations de Laravel** para crear la base de datos. La fuente de verdad del esquema y datos demo es `laravel/database/gaud.sql`.
+- Los scripts de base de datos están en `laravel/database/`:
+  - `gaud_schema.sql`: crea la base de datos `gaud` y las tablas del sistema.
+  - `gaud_seed.sql`: inserta los datos de prueba (universidad, carreras, asignaturas, usuario demo e inscripciones).
+  - `uapa_prerrequisitos_correquisitos.sql`: inserta las relaciones de prerrequisitos y correquisitos entre asignaturas.
+- El proyecto **no usa migrations de Laravel** para crear la base de datos. 
 
 ---
 
@@ -140,18 +147,19 @@ Apache de XAMPP se usa principalmente para tener MySQL/MariaDB disponible y, opc
 
 ### 3. Importar la base de datos
 
-El script SQL se encuentra en:
+Los scripts SQL se encuentran en:
 
 ```text
-laravel/database/gaud.sql
+laravel/database/
 ```
 
-Este script:
+La base de datos se importa en tres pasos, en este orden:
 
-- Crea la base de datos `gaud` si no existe.
-- Crea las tablas del sistema.
-- Inserta datos de prueba.
-- Incluye el usuario de demostración.
+1. `gaud_schema.sql`: crea la base de datos `gaud` y las tablas del sistema.
+2. `gaud_seed.sql`: inserta los datos de prueba (universidad, carreras, asignaturas, usuario demo e inscripciones).
+3. `uapa_prerrequisitos_correquisitos.sql`: inserta las relaciones de prerrequisitos y correquisitos.
+
+También existe `gaud.sql`, un dump todo-en-uno con el esquema, los datos de prueba y las relaciones, si prefieres importar un solo archivo.
 
 #### Opción A: usando phpMyAdmin
 
@@ -161,7 +169,13 @@ Este script:
    http://localhost/phpmyadmin
    ```
 3. Ve a la pestaña **Importar**.
-4. Selecciona el archivo:
+4. Selecciona los archivos en este orden y ejecuta cada importación:
+   ```text
+   laravel/database/gaud_schema.sql
+   laravel/database/gaud_seed.sql
+   laravel/database/uapa_prerrequisitos_correquisitos.sql
+   ```
+   O selecciona el archivo todo-en-uno:
    ```text
    laravel/database/gaud.sql
    ```
@@ -172,16 +186,20 @@ Este script:
 Desde la carpeta raíz del proyecto:
 
 ```bash
-mysql -u root < laravel/database/gaud.sql
+mysql -u root < laravel/database/gaud_schema.sql
+mysql -u root < laravel/database/gaud_seed.sql
+mysql -u root < laravel/database/uapa_prerrequisitos_correquisitos.sql
 ```
 
 Si tu MySQL/MariaDB requiere contraseña:
 
 ```bash
-mysql -u root -p < laravel/database/gaud.sql
+mysql -u root -p < laravel/database/gaud_schema.sql
+mysql -u root -p < laravel/database/gaud_seed.sql
+mysql -u root -p < laravel/database/uapa_prerrequisitos_correquisitos.sql
 ```
 
-> **Advertencia:** el script elimina y vuelve a crear las tablas. Si lo importas nuevamente, los datos actuales de la base de datos `gaud` se reemplazarán por los datos demo.
+> **Advertencia:** el script de esquema elimina y vuelve a crear las tablas. Si lo importas nuevamente, los datos actuales de la base de datos `gaud` se reemplazarán por los datos demo.
 
 ---
 
@@ -351,6 +369,7 @@ Contiene las siguientes tablas:
 | `universidades` | Universidades disponibles en el catálogo |
 | `carreras` | Carreras ofrecidas por cada universidad |
 | `asignaturas` | Asignaturas del plan de estudios |
+| `asignatura_relaciones` | Prerrequisitos y correquisitos entre asignaturas |
 | `usuarios` | Estudiantes registrados |
 | `inscripciones` | Relación entre usuarios y asignaturas, con estado y calificación |
 
@@ -358,6 +377,7 @@ Contiene las siguientes tablas:
 
 - Una universidad puede ofrecer muchas carreras.
 - Una carrera puede tener muchas asignaturas.
+- Una asignatura puede tener prerrequisitos y correquisitos (tabla `asignatura_relaciones`, con tipo `prerrequisito` o `correquisito`).
 - Un usuario pertenece a una universidad y a una carrera.
 - Un usuario puede estar inscrito en muchas asignaturas.
 - Una asignatura puede estar inscrita por muchos usuarios.
@@ -365,13 +385,14 @@ Contiene las siguientes tablas:
 
 ### Datos de prueba
 
-El script SQL incluye datos de ejemplo para:
+Los scripts SQL incluyen datos de ejemplo para:
 
-- Universidad Abierta Para Adultos.
-- Carrera de Ingeniería en Software.
-- Asignaturas del plan de estudios.
-- Usuario de demostración.
-- Inscripciones de ejemplo para el usuario demo.
+- Universidad Abierta Para Adultos (UAPA).
+- 22 carreras.
+- 1376 asignaturas del plan de estudios.
+- 475 relaciones de prerrequisitos y correquisitos.
+- 2 usuarios (incluido el usuario de demostración).
+- 23 inscripciones de ejemplo.
 
 ---
 
@@ -419,8 +440,8 @@ Error:
 | `DELETE` | `/api/usuarios.php` | Sí | Elimina la cuenta del usuario autenticado |
 | `GET` | `/api/catalogo.php` | No | Obtiene universidades y carreras |
 | `GET` | `/api/dashboard.php` | Sí | Obtiene el resumen académico del usuario |
-| `GET` | `/api/asignaturas.php` | Sí | Obtiene asignaturas con estado del usuario |
-| `PUT` | `/api/asignaturas.php` | Sí | Actualiza estado o calificación de una asignatura |
+| `GET` | `/api/asignaturas.php` | Sí | Obtiene asignaturas con estado del usuario, prerrequisitos y correquisitos |
+| `PUT` | `/api/asignaturas.php` | Sí | Actualiza estado o calificación de una asignatura, verificando prerrequisitos y correquisitos |
 
 ### Estados de asignatura
 
@@ -439,6 +460,15 @@ A
 B
 C
 ```
+
+### Prerrequisitos y correquisitos
+
+Al actualizar el estado de una asignatura, la aplicación verifica sus prerrequisitos y correquisitos:
+
+- Si un **prerrequisito** no está aprobado, la asignatura queda bloqueada y no se puede aprobar.
+- Los **correquisitos** se evalúan como grupo: para transiciones de un grupo completo se usa el parámetro `con_correquisitos` en la petición.
+
+El endpoint `GET /api/asignaturas.php` devuelve, junto con cada asignatura, sus `prerrequisitos` y `correquisitos` con el estado actual del usuario.
 
 ---
 
