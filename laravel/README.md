@@ -209,10 +209,11 @@ laravel/database/gaud.sql
 
 Este script:
 
-- Crea la base de datos `gaud` si no existe.
-- Crea las tablas del sistema.
-- Inserta datos de prueba.
-- Incluye el usuario de demostración.
+1. `gaud_schema.sql`: crea la base de datos `gaud` y las tablas del sistema.
+2. `gaud_seed.sql`: inserta los datos de prueba (universidad, carreras, asignaturas, usuario demo e inscripciones).
+3. `uapa_prerrequisitos_correquisitos.sql`: inserta las relaciones de prerrequisitos y correquisitos.
+
+También existe `gaud.sql`, un dump todo-en-uno con el esquema, los datos de prueba y las relaciones, si prefieres importar un solo archivo.
 
 #### Opción A: usando phpMyAdmin
 
