@@ -118,7 +118,7 @@ El proyecto incluye scripts de setup que automatizan la instalación completa en
 ### Pasos
 
 ```bash
-git clone https://github.com/yiyividal612/GAUD_project.git
+git clone https://github.com/pako086/GAUD.git
 cd GAUD
 ```
 
@@ -163,85 +163,6 @@ http://127.0.0.1:8000
 | Contraseña de MySQL | `setup.bat -DbPassword "clave"` | `./setup.sh --db-password clave` | Default: vacía (XAMPP por defecto) |
 | Servidor al terminar | `setup.bat -Serve` | `./setup.sh --serve` | Arranca `php artisan serve` (puerto 8000, fallback 8080) y abre el navegador |
 
-> **Advertencia:** el paso 5 borra y recrea la base de datos `gaud` con los datos demo. Si hizo cambios manuales a esa base de datos, se perderán.
-
----
-
-## Instalación manual (referencia)
-
-### 1. Obtener el código
-
-Si clonas el repositorio:
-
-```bash
-git clone https://github.com/pako086/GAUD.git
-cd GAUD
-```
-
-Si descargaste el proyecto como ZIP, extrae el contenido y entra a la carpeta que contiene `laravel/`.
-
----
-
-### 2. Iniciar XAMPP
-
-Abre el panel de control de XAMPP e inicia:
-
-- **Apache**
-- **MySQL/MariaDB**
-
-Para esta aplicación, el servidor de desarrollo recomendado es el propio servidor de Laravel:
-
-```bash
-php artisan serve
-```
-
-Apache de XAMPP se usa principalmente para tener MySQL/MariaDB disponible y, opcionalmente, para herramientas como phpMyAdmin.
-
----
-
-### 3. Importar la base de datos
-
-El script SQL se encuentra en:
-
-```text
-laravel/database/gaud.sql
-```
-
-Este script:
-
-1. `gaud_schema.sql`: crea la base de datos `gaud` y las tablas del sistema.
-2. `gaud_seed.sql`: inserta los datos de prueba (universidad, carreras, asignaturas, usuario demo e inscripciones).
-3. `uapa_prerrequisitos_correquisitos.sql`: inserta las relaciones de prerrequisitos y correquisitos.
-
-También existe `gaud.sql`, un dump todo-en-uno con el esquema, los datos de prueba y las relaciones, si prefieres importar un solo archivo.
-
-#### Opción A: usando phpMyAdmin
-
-1. Inicia MySQL en XAMPP.
-2. Abre phpMyAdmin:
-   ```text
-   http://localhost/phpmyadmin
-   ```
-3. Ve a la pestaña **Importar**.
-4. Selecciona el archivo:
-   ```text
-   laravel/database/gaud.sql
-   ```
-5. Ejecuta la importación.
-
-#### Opción B: usando la terminal
-
-Desde la carpeta raíz del proyecto:
-
-```bash
-mysql -u root < laravel/database/gaud.sql
-```
-
-Si tu MySQL/MariaDB requiere contraseña:
-
-```bash
-mysql -u root -p < laravel/database/gaud.sql
-```
 
 > **Advertencia:** el script elimina y vuelve a crear las tablas. Si lo importas nuevamente, los datos actuales de la base de datos `gaud` se reemplazarán por los datos demo.
 
